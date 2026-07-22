@@ -32,3 +32,24 @@ export function signRefreshToken(payload: RefreshTokenPayload): string {
 export function verifyRefreshToken(token: string): RefreshTokenPayload {
   return jwt.verify(token, env.JWT_REFRESH_SECRET) as RefreshTokenPayload;
 }
+
+export interface PasswordResetTokenPayload {
+  sub: string; // userId
+  tokenVersion: number; // invalidated the moment the user's tokenVersion changes
+  purpose: 'password_reset';
+}
+
+/** Deliberately separate from access tokens (distinct `purpose` claim) so a
+ *  reset link can never double as an API bearer token even if a caller
+ *  forgets to check `purpose`. */
+export function signPasswordResetToken(payload: Omit<PasswordResetTokenPayload, 'purpose'>): string {
+  return jwt.sign({ ...payload, purpose: 'password_reset' }, env.JWT_ACCESS_SECRET, { expiresIn: '30m' });
+}
+
+export function verifyPasswordResetToken(token: string): PasswordResetTokenPayload {
+  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as PasswordResetTokenPayload;
+  if (payload.purpose !== 'password_reset') {
+    throw new Error('Not a password reset token');
+  }
+  return payload;
+}
