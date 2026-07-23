@@ -8,13 +8,14 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "postinstall": "pnpm --filter shared-types build",
     "dev": "pnpm --parallel --filter ./apps/* dev",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
-    "build": "pnpm --filter ./apps/* build",
+    "build": "pnpm --filter shared-types build && pnpm --filter ./apps/* build",
     "lint": "pnpm --filter ./apps/* --filter ./packages/* lint",
-    "typecheck": "pnpm --filter ./apps/* --filter ./packages/* typecheck",
-    "test": "pnpm --filter ./apps/* test",
+    "typecheck": "pnpm --filter shared-types build && pnpm --filter ./apps/* --filter ./packages/* typecheck",
+    "test": "pnpm --filter shared-types build && pnpm --filter ./apps/* test",
     "test:e2e": "pnpm --filter web test:e2e",
     "format": "prettier --write \"**/*.{ts,svelte,js,json,md,scss}\" --ignore-path .gitignore",
     "prisma:generate": "pnpm --filter api prisma:generate",

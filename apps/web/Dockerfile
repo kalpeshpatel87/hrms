@@ -23,6 +23,7 @@ ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 COPY packages/shared-types packages/shared-types
 COPY packages/config packages/config
 COPY apps/web apps/web
+RUN pnpm --filter shared-types build
 RUN pnpm --filter web build
 
 FROM node:20-alpine AS runtime

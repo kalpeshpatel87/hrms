@@ -17,6 +17,8 @@ pnpm dev                        # runs both apps in parallel
 
 API: `http://localhost:4000` (Swagger: `/api/docs`). Web: `http://localhost:5173` in dev (Vite), or `http://localhost:3000` from a production build.
 
+`packages/shared-types` is compiled (`tsc`), not consumed as raw source — both apps import its `dist/` output. `pnpm install` builds it automatically via a root `postinstall` hook, so a fresh clone works out of the box. If you edit `packages/shared-types/src/*` directly, either re-run `pnpm --filter shared-types build` or run `pnpm --filter shared-types dev` (watch mode) in a separate terminal while you work — otherwise the apps keep seeing the last-built version.
+
 ## Before opening a PR
 
 ```bash

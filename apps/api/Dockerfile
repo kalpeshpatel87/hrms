@@ -23,11 +23,13 @@ COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY packages/config/package.json packages/config/package.json
 RUN pnpm install --frozen-lockfile --filter api... --filter shared-types --filter config
 
-# --- build: prisma generate + tsc -------------------------------------------
+# --- build: shared-types (compiled — apps/api imports its dist, not raw TS)
+# then prisma generate + tsc -------------------------------------------------
 FROM deps AS build
 COPY packages/shared-types packages/shared-types
 COPY packages/config packages/config
 COPY apps/api apps/api
+RUN pnpm --filter shared-types build
 RUN pnpm --filter api prisma:generate
 RUN pnpm --filter api build
 
