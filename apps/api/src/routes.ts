@@ -16,6 +16,7 @@ import { orgRoutes } from './modules/org/org.routes.js';
 import { payrollRoutes } from './modules/payroll/payroll.routes.js';
 import { performanceRoutes } from './modules/performance/performance.routes.js';
 import { recruitmentRoutes } from './modules/recruitment/recruitment.routes.js';
+import { reportRoutes } from './modules/report/report.routes.js';
 import { timesheetRoutes } from './modules/timesheet/timesheet.routes.js';
 import { travelRoutes } from './modules/travel/travel.routes.js';
 
@@ -47,3 +48,4 @@ apiRouter.use('/expenses', expenseRoutes);
 apiRouter.use('/travel', travelRoutes);
 apiRouter.use('/documents', documentRoutes);
 apiRouter.use('/notifications', notificationRoutes);
+apiRouter.use('/reports', reportRoutes);
