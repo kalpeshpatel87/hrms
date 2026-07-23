@@ -209,7 +209,7 @@ interface ComponentBreakdownLine {
  *  - FORMULA: out of scope for this pass (no formula parser) — falls back to
  *    the stored flat `amount`, same as FIXED.
  */
-function resolveComponentAmount(
+export function resolveComponentAmount(
   calculationType: ComponentCalculationType,
   amount: Prisma.Decimal,
   percentage: Prisma.Decimal | null,
