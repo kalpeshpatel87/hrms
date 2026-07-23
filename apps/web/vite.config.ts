@@ -3,6 +3,12 @@ import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	server: {
+		// Matches WEB_APP_URL's default (apps/api/.env) and the documented/Docker
+		// port everywhere else in the project — Vite's own default (5173) would
+		// mismatch the API's CORS allow-list and fail every request as a "Network Error".
+		port: 3000
+	},
 	plugins: [
 		sveltekit({
 			compilerOptions: {
