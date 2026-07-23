@@ -11,7 +11,7 @@ export async function listAnnouncementsHandler(req: Request, res: Response) {
 }
 
 export async function getAnnouncementHandler(req: Request, res: Response) {
-  const announcement = await announcementService.getAnnouncementOrThrow(req.params.id as string);
+  const announcement = await announcementService.getVisibleAnnouncementOrThrow(req.params.id as string, req.user!.sub);
   return sendSuccess(res, announcement);
 }
 

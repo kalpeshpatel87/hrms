@@ -7,13 +7,15 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 
-  JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
-  JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters'),
+  // 32 chars is a floor, not a target — .env.example documents generating
+  // these with `openssl rand -hex 32` (256 bits) for real deployments.
+  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('30d'),
 
-  COOKIE_SECRET: z.string().min(16),
-  CSRF_SECRET: z.string().min(16),
+  COOKIE_SECRET: z.string().min(32),
+  CSRF_SECRET: z.string().min(32),
 
   WEB_APP_URL: z.string().url().default('http://localhost:3000'),
 
@@ -31,6 +33,9 @@ const envSchema = z.object({
   SMTP_FROM: z.string().default('Atyantik EMS <no-reply@atyantik.com>'),
 
   SUPER_ADMIN_EMAIL: z.string().email().default('kalpeshpatel@atyantik.com'),
+}).refine((data) => data.JWT_ACCESS_SECRET !== data.JWT_REFRESH_SECRET, {
+  message: 'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different values',
+  path: ['JWT_REFRESH_SECRET'],
 });
 
 const parsed = envSchema.safeParse(process.env);

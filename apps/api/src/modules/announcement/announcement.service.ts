@@ -170,6 +170,34 @@ export async function getAnnouncementOrThrow(id: string) {
   return announcement;
 }
 
+/**
+ * Self-service single-fetch: unlike getAnnouncementOrThrow (used by the
+ * announcement:update/delete admin routes, where audience is irrelevant),
+ * this enforces the same audience visibility rules as
+ * listVisibleAnnouncements — otherwise a caller could read a
+ * DEPARTMENT/BRANCH/ROLE-restricted announcement not meant for them just by
+ * guessing/enumerating its id.
+ */
+export async function getVisibleAnnouncementOrThrow(id: string, userId: string) {
+  const announcement = await getAnnouncementOrThrow(id);
+  const employee = await resolveEmployeeForUser(userId);
+
+  if (announcement.audience === AnnouncementAudience.ALL_EMPLOYEES) return announcement;
+  if (announcement.audience === AnnouncementAudience.SPECIFIC_EMPLOYEES) return announcement; // see limitation noted above
+  if (announcement.audience === AnnouncementAudience.DEPARTMENT && announcement.targetDepartmentId === employee.departmentId) {
+    return announcement;
+  }
+  if (announcement.audience === AnnouncementAudience.BRANCH && announcement.targetBranchId === employee.branchId) {
+    return announcement;
+  }
+  if (announcement.audience === AnnouncementAudience.ROLE) {
+    const userRoles = await prisma.userRole.findMany({ where: { userId }, select: { roleId: true } });
+    if (userRoles.some((ur) => ur.roleId === announcement.targetRoleId)) return announcement;
+  }
+
+  throw ApiError.forbidden('This announcement is not visible to you');
+}
+
 export async function updateAnnouncement(id: string, input: UpdateAnnouncementInput) {
   const existing = await getAnnouncementOrThrow(id);
 
