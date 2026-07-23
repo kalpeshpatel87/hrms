@@ -1,0 +1,25 @@
+@import './bootstrap-overrides';
+@import 'bootstrap/scss/bootstrap';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+@import './theme';
+@import './shell';
+
+html,
+body {
+	background: var(--surface-muted);
+	color: var(--text-primary);
+}
+
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.text-muted-2 {
+	color: var(--text-muted) !important;
+}
+
+.card {
+	background: var(--surface);
+	border-color: var(--border-color);
+}

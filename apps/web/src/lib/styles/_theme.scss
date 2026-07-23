@@ -1,0 +1,69 @@
+// Cross-cutting design tokens as CSS custom properties, so components/JS can
+// react to light/dark/RTL without a rebuild. Bootstrap's own $variables (see
+// _bootstrap-overrides.scss) drive compiled utility classes; these drive our
+// custom shell chrome (sidebar, topbar, cards, glass surfaces).
+
+:root {
+	--surface: #ffffff;
+	--surface-muted: #f4f6f9;
+	--surface-sunken: #eef1f6;
+	--border-color: #e2e6ed;
+	--text-primary: #1f2733;
+	--text-secondary: #5b6472;
+	--text-muted: #8892a0;
+	--sidebar-bg: #101a2e;
+	--sidebar-bg-active: rgba(255, 255, 255, 0.08);
+	--sidebar-text: #c7d0e0;
+	--sidebar-text-active: #ffffff;
+	--topbar-bg: rgba(255, 255, 255, 0.85);
+	--glass-bg: rgba(255, 255, 255, 0.65);
+	--glass-border: rgba(255, 255, 255, 0.4);
+	--shadow-color: 16, 24, 40;
+	--scrollbar-thumb: #c7cdd7;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--surface: #161d2c;
+		--surface-muted: #0f1522;
+		--surface-sunken: #0b101a;
+		--border-color: #262f42;
+		--text-primary: #e7ebf3;
+		--text-secondary: #a3adc2;
+		--text-muted: #717d94;
+		--sidebar-bg: #0b1120;
+		--sidebar-bg-active: rgba(255, 255, 255, 0.06);
+		--sidebar-text: #a3adc2;
+		--sidebar-text-active: #ffffff;
+		--topbar-bg: rgba(22, 29, 44, 0.85);
+		--glass-bg: rgba(22, 29, 44, 0.55);
+		--glass-border: rgba(255, 255, 255, 0.08);
+		--shadow-color: 0, 0, 0;
+		--scrollbar-thumb: #333e58;
+	}
+}
+
+:root[data-theme='dark'] {
+	--surface: #161d2c;
+	--surface-muted: #0f1522;
+	--surface-sunken: #0b101a;
+	--border-color: #262f42;
+	--text-primary: #e7ebf3;
+	--text-secondary: #a3adc2;
+	--text-muted: #717d94;
+	--sidebar-bg: #0b1120;
+	--sidebar-bg-active: rgba(255, 255, 255, 0.06);
+	--sidebar-text: #a3adc2;
+	--sidebar-text-active: #ffffff;
+	--topbar-bg: rgba(22, 29, 44, 0.85);
+	--glass-bg: rgba(22, 29, 44, 0.55);
+	--glass-border: rgba(255, 255, 255, 0.08);
+	--shadow-color: 0, 0, 0;
+	--scrollbar-thumb: #333e58;
+}
+
+html[dir='rtl'] {
+	.ms-auto {
+		margin-inline-start: auto !important;
+	}
+}

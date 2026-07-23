@@ -38,3 +38,7 @@ Thumbs.db
 # misc
 *.tsbuildinfo
 .pnpm-store/
+
+# Claude Code local/session state — never shared repo config
+.claude/settings.local.json
+.claude/settings.local.json.tmp.*
