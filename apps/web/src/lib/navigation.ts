@@ -48,18 +48,12 @@ export const NAV_SECTIONS: NavSection[] = [
 				icon: 'bi-person-badge',
 				permission: 'recruitment:read'
 			},
-			{
-				label: 'Onboarding',
-				href: '/onboarding',
-				icon: 'bi-door-open',
-				permission: 'onboarding:read'
-			},
-			{
-				label: 'Exit Management',
-				href: '/exit',
-				icon: 'bi-box-arrow-right',
-				permission: 'exit:read'
-			}
+			// Onboarding and Exit Management are self-service pages (view your own
+			// checklist / submit your own resignation — see requireAuth() with no
+			// permission arg on their routes) — NOT gated behind the admin-only
+			// onboarding:read/exit:read permissions, unlike Recruitment above.
+			{ label: 'Onboarding', href: '/onboarding', icon: 'bi-door-open' },
+			{ label: 'Exit Management', href: '/exit', icon: 'bi-box-arrow-right' }
 		]
 	},
 	{
