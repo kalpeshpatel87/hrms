@@ -28,3 +28,15 @@ export async function checkOut(coords?: { lat: number; lng: number }): Promise<A
 	);
 	return res.data.data;
 }
+
+export async function breakIn(breakType?: string): Promise<AttendanceRecord> {
+	const res = await apiClient.post<ApiEnvelope<AttendanceRecord>>('/attendance/break-in', {
+		breakType
+	});
+	return res.data.data;
+}
+
+export async function breakOut(): Promise<AttendanceRecord> {
+	const res = await apiClient.post<ApiEnvelope<AttendanceRecord>>('/attendance/break-out', {});
+	return res.data.data;
+}
