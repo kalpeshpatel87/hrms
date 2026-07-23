@@ -1,11 +1,26 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import { logout } from '../../features/auth/api.js';
+	import { getUnreadCount } from '../../features/notification/api.js';
 	import { currentUser } from '../../stores/auth.js';
 	import { mobileSidebarOpen, sidebarCollapsed } from '../../stores/sidebar.js';
 	import { theme } from '../../stores/theme.js';
 	import CommandPalette from './CommandPalette.svelte';
+
+	let unreadCount = $state(0);
+
+	onMount(() => {
+		const refresh = () => {
+			getUnreadCount()
+				.then((count) => (unreadCount = count))
+				.catch(() => undefined);
+		};
+		refresh();
+		const interval = setInterval(refresh, 60_000);
+		return () => clearInterval(interval);
+	});
 
 	const crumbs = $derived(
 		page.url.pathname
@@ -78,9 +93,17 @@
 		<a
 			href="/notifications"
 			class="btn btn-sm btn-light border position-relative"
-			aria-label="Notifications"
+			aria-label="Notifications ({unreadCount} unread)"
 		>
 			<i class="bi bi-bell"></i>
+			{#if unreadCount > 0}
+				<span
+					class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+					style="font-size: 0.6rem;"
+				>
+					{unreadCount > 9 ? '9+' : unreadCount}
+				</span>
+			{/if}
 		</a>
 
 		<div class="dropdown">
