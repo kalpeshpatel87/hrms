@@ -158,6 +158,15 @@ declare global {
 export const prisma: ExtendedPrismaClient = globalThis.__atyantikPrisma ?? createExtendedPrismaClient();
 
 /**
+ * The type of the `tx` argument inside `prisma.$transaction(async (tx) => ...)`.
+ * NOT the same nominal type as `Prisma.TransactionClient` — the extension
+ * changes the client's shape — so any function taking a transaction client as
+ * a parameter (e.g. a service split into several `tx`-scoped helpers) should
+ * type it as `PrismaTransaction`, not `Prisma.TransactionClient`.
+ */
+export type PrismaTransaction = Parameters<Parameters<ExtendedPrismaClient['$transaction']>[0]>[0];
+
+/**
  * Unextended escape hatch for genuine hard deletes (GDPR erasure, data
  * retention jobs). Restricted by convention + an ESLint restricted-import
  * rule to `src/jobs/**` — never import this from a module/controller.
