@@ -1,4 +1,4 @@
-import { differenceInMinutes, endOfMonth, startOfDay, startOfMonth } from 'date-fns';
+import { differenceInMinutes, endOfMonth, startOfMonth } from 'date-fns';
 import { ApprovalStatus, AttendanceStatus, Prisma } from '@prisma/client';
 import type { PaginatedResult } from '@atyantik/shared-types';
 import { prisma } from '../../db/prisma.js';
@@ -26,8 +26,16 @@ async function resolveEmployeeForUser(userId: string) {
   return employee;
 }
 
+/**
+ * A JS Date at *local* midnight (e.g. date-fns startOfDay) serializes to a
+ * Prisma `@db.Date` column using its UTC components — in a UTC+5:30 (IST)
+ * environment that's 18:30 the *previous* UTC day, silently storing every
+ * attendance record one calendar day behind. Building the Date directly from
+ * UTC(localYear, localMonth, localDate) keeps the intended calendar day intact.
+ */
 function todayDateOnly(): Date {
-  return startOfDay(new Date());
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 }
 
 /** Parses a "HH:mm" shift time string against a given calendar date. */

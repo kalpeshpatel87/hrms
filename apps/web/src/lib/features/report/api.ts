@@ -22,9 +22,12 @@ export async function getAttendanceSummary(
 	month: number,
 	year: number
 ): Promise<AttendanceSummaryRow[]> {
-	const res = await apiClient.get<ApiEnvelope<AttendanceSummaryRow[]>>('/reports/attendance-summary', {
-		params: { month, year }
-	});
+	const res = await apiClient.get<ApiEnvelope<AttendanceSummaryRow[]>>(
+		'/reports/attendance-summary',
+		{
+			params: { month, year }
+		}
+	);
 	return res.data.data;
 }
 

@@ -2,9 +2,11 @@ import type { Request, Response } from 'express';
 import { sendCreated, sendPaginated, sendSuccess, buildPagination } from '../../lib/response.js';
 import * as leaveService from './leave.service.js';
 import type {
+  AccrueLeaveBalancesInput,
   ApprovalActionInput,
   CancelLeaveRequestInput,
   CreateLeavePolicyInput,
+  CreateLeaveRequestAdminInput,
   CreateLeaveRequestInput,
   CreateLeaveTypeInput,
   IdParam,
@@ -74,6 +76,12 @@ export async function getMyLeaveBalancesHandler(req: Request, res: Response) {
   return sendSuccess(res, balances);
 }
 
+export async function accrueLeaveBalancesHandler(req: Request, res: Response) {
+  const body = req.body as AccrueLeaveBalancesInput;
+  const result = await leaveService.accrueLeaveBalances(req.user!.sub, body.year);
+  return sendSuccess(res, result, `Created ${result.created} leave balance record(s) for ${result.year}`);
+}
+
 // ---------------------------------------------------------------------------
 // LeaveRequest
 // ---------------------------------------------------------------------------
@@ -82,6 +90,12 @@ export async function createLeaveRequestHandler(req: Request, res: Response) {
   const body = req.body as CreateLeaveRequestInput;
   const leaveRequest = await leaveService.createLeaveRequest(req.user!.sub, body);
   return sendCreated(res, leaveRequest, 'Leave request submitted successfully');
+}
+
+export async function createLeaveRequestAdminHandler(req: Request, res: Response) {
+  const body = req.body as CreateLeaveRequestAdminInput;
+  const leaveRequest = await leaveService.createLeaveRequestForAdmin(body);
+  return sendCreated(res, leaveRequest, 'Leave request submitted on behalf of the employee');
 }
 
 export async function listMyLeaveRequestsHandler(req: Request, res: Response) {

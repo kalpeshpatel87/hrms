@@ -3,6 +3,7 @@ import { ApiError } from '../../lib/ApiError.js';
 import { recordAuditLog } from '../../lib/auditLog.js';
 import type { PaginatedResult, PaginationQuery } from '@atyantik/shared-types';
 import type {
+  AuditLogQuery,
   BranchCreateInput,
   BranchQuery,
   BranchUpdateInput,
@@ -552,4 +553,34 @@ export async function upsertCompanySetting(key: string, input: CompanySettingUps
     after: setting,
   });
   return setting;
+}
+
+// ---------------------------------------------------------------------------
+// AuditLog (read-only)
+// ---------------------------------------------------------------------------
+
+export async function listAuditLogs(query: AuditLogQuery): Promise<PaginatedResult<unknown>> {
+  const { page, pageSize, entityType, actorId, dateFrom, dateTo } = query;
+
+  const where: Record<string, unknown> = {
+    ...(entityType && { entityType }),
+    ...(actorId && { actorId }),
+    ...((dateFrom || dateTo) && {
+      createdAt: {
+        ...(dateFrom && { gte: dateFrom }),
+        ...(dateTo && { lte: dateTo }),
+      },
+    }),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { actor: { select: { id: true, email: true } } },
+      ...pageSlice(query),
+    }),
+    prisma.auditLog.count({ where }),
+  ]);
+  return { items, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
 }

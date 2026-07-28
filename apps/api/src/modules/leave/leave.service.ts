@@ -7,6 +7,7 @@ import type {
   ApprovalActionInput,
   CancelLeaveRequestInput,
   CreateLeavePolicyInput,
+  CreateLeaveRequestAdminInput,
   CreateLeaveRequestInput,
   CreateLeaveTypeInput,
   LeaveApprovalQuery,
@@ -229,13 +230,60 @@ export async function getMyLeaveBalances(userId: string, year?: number) {
   });
 }
 
+/**
+ * Admin-only: for every active employee and every LeavePolicy applicable to
+ * their employment type, creates a LeaveBalance row for `year` if one doesn't
+ * already exist. Never overwrites an existing row (usage already tracked
+ * against it) — this only backfills gaps, e.g. new hires or newly added
+ * policies. There is no scheduled accrual job yet; this is the manual trigger.
+ */
+export async function accrueLeaveBalances(userId: string, year: number) {
+  const companyId = await resolveCompanyId(userId);
+  if (!companyId) throw ApiError.badRequest('No employee profile is linked to this account');
+
+  const [employees, policies] = await Promise.all([
+    prisma.employee.findMany({
+      where: { companyId, status: { not: 'TERMINATED' } },
+      select: { id: true, employmentType: true },
+    }),
+    prisma.leavePolicy.findMany({ where: { companyId, effectiveFrom: { lte: new Date(Date.UTC(year, 11, 31)) } } }),
+  ]);
+
+  let created = 0;
+  for (const employee of employees) {
+    const applicablePolicies = policies.filter((p) => p.applicableEmploymentTypes.includes(employee.employmentType));
+    for (const policy of applicablePolicies) {
+      const existing = await prisma.leaveBalance.findUnique({
+        where: { employeeId_leaveTypeId_year: { employeeId: employee.id, leaveTypeId: policy.leaveTypeId, year } },
+      });
+      if (existing) continue;
+
+      await prisma.leaveBalance.create({
+        data: {
+          employeeId: employee.id,
+          leaveTypeId: policy.leaveTypeId,
+          year,
+          allocated: policy.annualQuota,
+          available: policy.annualQuota,
+        },
+      });
+      created += 1;
+    }
+  }
+
+  await recordAuditLog({ action: 'CREATE', entityType: 'LeaveBalance', entityId: `accrual-${year}`, after: { year, created } });
+  return { year, created };
+}
+
 // ---------------------------------------------------------------------------
 // LeaveRequest
 // ---------------------------------------------------------------------------
 
-export async function createLeaveRequest(userId: string, input: CreateLeaveRequestInput) {
-  const employee = await getSelfEmployee(userId);
-
+/** Core leave-request creation, shared by the self-service and admin-on-behalf-of paths below. */
+async function createLeaveRequestForEmployee(
+  employee: { id: string; companyId: string; reportingManagerId: string | null },
+  input: CreateLeaveRequestInput,
+) {
   const leaveType = await prisma.leaveType.findFirst({
     where: { id: input.leaveTypeId, companyId: employee.companyId },
   });
@@ -292,6 +340,19 @@ export async function createLeaveRequest(userId: string, input: CreateLeaveReque
   });
 
   return leaveRequest;
+}
+
+export async function createLeaveRequest(userId: string, input: CreateLeaveRequestInput) {
+  const employee = await getSelfEmployee(userId);
+  return createLeaveRequestForEmployee(employee, input);
+}
+
+/** Admin-only: apply leave on behalf of any employee (e.g. backfilling a request phoned in to HR). */
+export async function createLeaveRequestForAdmin(input: CreateLeaveRequestAdminInput) {
+  const { employeeId, ...rest } = input;
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+  if (!employee) throw ApiError.badRequest('Employee not found');
+  return createLeaveRequestForEmployee(employee, rest);
 }
 
 export async function listMyLeaveRequests(userId: string, query: LeaveRequestMeQuery) {

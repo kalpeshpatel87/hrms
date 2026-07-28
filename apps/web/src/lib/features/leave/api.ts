@@ -1,6 +1,7 @@
 import type { PaginatedResult } from '@atyantik/shared-types';
 import { apiClient } from '../../services/api-client.js';
 import type {
+	CreateLeaveRequestAdminInput,
 	CreateLeaveRequestInput,
 	LeaveApproval,
 	LeaveBalance,
@@ -29,6 +30,14 @@ export async function listLeaveTypes(): Promise<LeaveType[]> {
 
 export async function createLeaveRequest(input: CreateLeaveRequestInput): Promise<LeaveRequest> {
 	const res = await apiClient.post<ApiEnvelope<LeaveRequest>>('/leave/requests', input);
+	return res.data.data;
+}
+
+/** Admin-only: apply leave on behalf of any employee (requires leave:create). */
+export async function createLeaveRequestForAdmin(
+	input: CreateLeaveRequestAdminInput
+): Promise<LeaveRequest> {
+	const res = await apiClient.post<ApiEnvelope<LeaveRequest>>('/leave/requests/admin', input);
 	return res.data.data;
 }
 

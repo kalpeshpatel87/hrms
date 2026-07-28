@@ -52,3 +52,7 @@ export interface CreateLeaveRequestInput {
 	endDayUnit?: LeaveUnit;
 	reason?: string;
 }
+
+export interface CreateLeaveRequestAdminInput extends CreateLeaveRequestInput {
+	employeeId: string;
+}

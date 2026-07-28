@@ -4,6 +4,7 @@ import { requireAuth } from '../../middlewares/requireAuth.js';
 import { validate } from '../../middlewares/validate.js';
 import * as controller from './org.controller.js';
 import {
+  auditLogQuerySchema,
   branchCreateSchema,
   branchQuerySchema,
   branchUpdateSchema,
@@ -285,6 +286,17 @@ orgRoutes.put(
   validate(companySettingKeyParamSchema, 'params'),
   validate(companySettingUpsertSchema),
   asyncHandler(controller.upsertCompanySettingHandler),
+);
+
+// ---------------------------------------------------------------------------
+// AuditLog (read-only)
+// ---------------------------------------------------------------------------
+
+orgRoutes.get(
+  '/audit-logs',
+  ...requireAuth('audit_log:read'),
+  validate(auditLogQuerySchema, 'query'),
+  asyncHandler(controller.listAuditLogsHandler),
 );
 
 // ---------------------------------------------------------------------------

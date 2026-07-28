@@ -1,13 +1,27 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { listEmployees } from '../../features/employee/api.js';
 	import { NAV_SECTIONS } from '../../navigation.js';
+	import { extractErrorMessage } from '../../services/api-client.js';
 	import { hasPermission } from '../../stores/auth.js';
+
+	interface ResultItem {
+		label: string;
+		href: string;
+		icon: string;
+		section: string;
+	}
 
 	let open = $state(false);
 	let query = $state('');
 	let activeIndex = $state(0);
 	let inputEl: HTMLInputElement | undefined = $state();
+	let employeeResults = $state<ResultItem[]>([]);
+	let searchingEmployees = $state(false);
+	let employeeSearchDebounce: ReturnType<typeof setTimeout>;
+
+	const canSearchEmployees = hasPermission('employee:read');
 
 	const allItems = NAV_SECTIONS.flatMap((section) =>
 		section.items
@@ -15,15 +29,52 @@
 			.map((item) => ({ ...item, section: section.label }))
 	);
 
-	const filtered = $derived(
+	const navMatches = $derived(
 		query.trim().length === 0
 			? allItems
 			: allItems.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()))
 	);
 
+	// Nav items filter instantly (client-side); employee matches come from the
+	// API below and are appended once they land — this is real data search,
+	// not just jumping between existing pages by module name.
+	const filtered = $derived([...navMatches, ...employeeResults]);
+
+	function searchEmployees(value: string) {
+		clearTimeout(employeeSearchDebounce);
+		if (!canSearchEmployees || value.trim().length === 0) {
+			employeeResults = [];
+			return;
+		}
+		employeeSearchDebounce = setTimeout(async () => {
+			searchingEmployees = true;
+			try {
+				const result = await listEmployees({ page: 1, pageSize: 5, search: value.trim() });
+				employeeResults = result.items.map((employee) => ({
+					label: `${employee.firstName} ${employee.lastName} (${employee.employeeCode})`,
+					href: `/employees/${employee.id}`,
+					icon: 'bi-person',
+					section: 'Employees'
+				}));
+			} catch (err) {
+				// Search-as-you-type failures shouldn't interrupt the palette — the
+				// nav-item matches above still work regardless.
+				console.error('Employee search failed:', extractErrorMessage(err));
+			} finally {
+				searchingEmployees = false;
+			}
+		}, 300);
+	}
+
+	function handleQueryInput() {
+		activeIndex = 0;
+		searchEmployees(query);
+	}
+
 	function openPalette() {
 		open = true;
 		query = '';
+		employeeResults = [];
 		activeIndex = 0;
 		queueMicrotask(() => inputEl?.focus());
 	}
@@ -94,14 +145,20 @@
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 		>
-			<div class="p-2 border-bottom">
+			<div class="p-2 border-bottom d-flex align-items-center">
 				<input
 					bind:this={inputEl}
 					bind:value={query}
+					oninput={handleQueryInput}
 					type="text"
 					class="form-control form-control-lg border-0 shadow-none"
-					placeholder="Jump to a module or page…"
+					placeholder="Search employees, or jump to a module…"
 				/>
+				{#if searchingEmployees}
+					<span class="spinner-border spinner-border-sm text-muted-2 me-2" role="status"
+						><span class="visually-hidden">Searching…</span></span
+					>
+				{/if}
 			</div>
 			<ul class="list-unstyled m-0 command-palette-list">
 				{#each filtered as item, i (item.href)}

@@ -102,7 +102,9 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
 	<div>
 		<h1 class="h4 fw-bold mb-1">Reports</h1>
-		<p class="text-muted-2 mb-0">Company-wide headcount, attendance, leave and payroll summaries.</p>
+		<p class="text-muted-2 mb-0">
+			Company-wide headcount, attendance, leave and payroll summaries.
+		</p>
 	</div>
 	<div class="d-flex gap-2">
 		<select

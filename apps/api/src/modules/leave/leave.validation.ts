@@ -50,6 +50,11 @@ export const leaveBalanceQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100).optional(),
 });
 
+/** Admin-only: (re-)initialize leave balances for every employee/policy missing a row for the given year. */
+export const accrueLeaveBalancesSchema = z.object({
+  year: z.coerce.number().int().min(2000).max(2100),
+});
+
 // ---------------------------------------------------------------------------
 // LeaveRequest
 // ---------------------------------------------------------------------------
@@ -67,6 +72,11 @@ export const createLeaveRequestSchema = z
     message: 'startDate must be on or before endDate',
     path: ['endDate'],
   });
+
+/** Admin-only: apply leave on behalf of a specific employee (e.g. backfilling a phoned-in request). */
+export const createLeaveRequestAdminSchema = createLeaveRequestSchema.and(
+  z.object({ employeeId: z.string().min(1) }),
+);
 
 export const leaveRequestMeQuerySchema = paginationQuerySchema.extend({
   status: z.nativeEnum(LeaveStatus).optional(),
@@ -102,7 +112,9 @@ export type CreateLeavePolicyInput = z.infer<typeof createLeavePolicySchema>;
 export type UpdateLeavePolicyInput = z.infer<typeof updateLeavePolicySchema>;
 export type LeavePolicyQuery = z.infer<typeof leavePolicyQuerySchema>;
 export type LeaveBalanceQuery = z.infer<typeof leaveBalanceQuerySchema>;
+export type AccrueLeaveBalancesInput = z.infer<typeof accrueLeaveBalancesSchema>;
 export type CreateLeaveRequestInput = z.infer<typeof createLeaveRequestSchema>;
+export type CreateLeaveRequestAdminInput = z.infer<typeof createLeaveRequestAdminSchema>;
 export type LeaveRequestMeQuery = z.infer<typeof leaveRequestMeQuerySchema>;
 export type LeaveRequestAdminQuery = z.infer<typeof leaveRequestAdminQuerySchema>;
 export type CancelLeaveRequestInput = z.infer<typeof cancelLeaveRequestSchema>;

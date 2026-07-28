@@ -2,10 +2,13 @@
 	import { onMount } from 'svelte';
 	import DataTable, { type Column } from '../../../lib/components/ui/DataTable.svelte';
 	import Modal from '../../../lib/components/ui/Modal.svelte';
+	import { listEmployees } from '../../../lib/features/employee/api.js';
+	import type { EmployeeListItem } from '../../../lib/features/employee/types.js';
 	import {
 		approveLeaveRequest,
 		cancelLeaveRequest,
 		createLeaveRequest,
+		createLeaveRequestForAdmin,
 		getMyLeaveBalances,
 		listLeaveTypes,
 		listMyLeaveRequests,
@@ -25,6 +28,10 @@
 
 	let activeTab = $state<'requests' | 'approvals'>('requests');
 	const canApprove = hasPermission('leave:approve');
+	const canApplyForOthers = hasPermission('leave:create');
+
+	let employees = $state<EmployeeListItem[]>([]);
+	let onBehalfOfEmployeeId = $state('');
 
 	let balances = $state<LeaveBalance[]>([]);
 	let leaveTypes = $state<LeaveType[]>([]);
@@ -39,6 +46,7 @@
 	let loadingApprovals = $state(false);
 
 	let applyModalOpen = $state(false);
+	let applyMode = $state<'self' | 'admin'>('self');
 	let submitting = $state(false);
 	let form = $state<CreateLeaveRequestInput>({
 		leaveTypeId: '',
@@ -97,15 +105,35 @@
 	}
 
 	onMount(async () => {
-		await Promise.all([loadBalancesAndTypes(), loadRequests(), loadApprovals()]);
+		const tasks = [loadBalancesAndTypes(), loadRequests(), loadApprovals()];
+		if (canApplyForOthers) {
+			tasks.push(
+				listEmployees({ page: 1, pageSize: 200 }).then((result) => {
+					employees = result.items;
+				})
+			);
+		}
+		await Promise.all(tasks);
 	});
+
+	function openApplyModal(mode: 'self' | 'admin') {
+		applyMode = mode;
+		onBehalfOfEmployeeId = '';
+		form = { leaveTypeId: '', startDate: '', endDate: '', reason: '' };
+		applyModalOpen = true;
+	}
 
 	async function handleApplySubmit(event: SubmitEvent) {
 		event.preventDefault();
 		submitting = true;
 		try {
-			await createLeaveRequest(form);
-			toasts.success('Leave request submitted');
+			if (applyMode === 'admin') {
+				await createLeaveRequestForAdmin({ ...form, employeeId: onBehalfOfEmployeeId });
+				toasts.success('Leave request submitted on behalf of the employee');
+			} else {
+				await createLeaveRequest(form);
+				toasts.success('Leave request submitted');
+			}
 			applyModalOpen = false;
 			form = { leaveTypeId: '', startDate: '', endDate: '', reason: '' };
 			await Promise.all([loadRequests(), loadBalancesAndTypes()]);
@@ -156,9 +184,20 @@
 		<h1 class="h4 fw-bold mb-1">Leave</h1>
 		<p class="text-muted-2 mb-0">Apply for leave and track your balances.</p>
 	</div>
-	<button type="button" class="btn btn-primary btn-sm" onclick={() => (applyModalOpen = true)}>
-		<i class="bi bi-plus-lg me-1"></i>Apply for Leave
-	</button>
+	<div class="d-flex gap-2">
+		{#if canApplyForOthers}
+			<button
+				type="button"
+				class="btn btn-outline-primary btn-sm"
+				onclick={() => openApplyModal('admin')}
+			>
+				<i class="bi bi-person-plus me-1"></i>Apply on Behalf of Employee
+			</button>
+		{/if}
+		<button type="button" class="btn btn-primary btn-sm" onclick={() => openApplyModal('self')}>
+			<i class="bi bi-plus-lg me-1"></i>Apply for Leave
+		</button>
+	</div>
 </div>
 
 <div class="row g-3 mb-3">
@@ -269,8 +308,25 @@
 	</div>
 {/if}
 
-<Modal open={applyModalOpen} title="Apply for Leave" onClose={() => (applyModalOpen = false)}>
+<Modal
+	open={applyModalOpen}
+	title={applyMode === 'admin' ? 'Apply on Behalf of Employee' : 'Apply for Leave'}
+	onClose={() => (applyModalOpen = false)}
+>
 	<form id="apply-leave-form" onsubmit={handleApplySubmit}>
+		{#if applyMode === 'admin'}
+			<div class="mb-3">
+				<label for="onBehalfOf" class="form-label small fw-semibold">Employee</label>
+				<select id="onBehalfOf" class="form-select" bind:value={onBehalfOfEmployeeId} required>
+					<option value="" disabled>Select an employee</option>
+					{#each employees as employee (employee.id)}
+						<option value={employee.id}
+							>{employee.firstName} {employee.lastName} ({employee.employeeCode})</option
+						>
+					{/each}
+				</select>
+			</div>
+		{/if}
 		<div class="mb-3">
 			<label for="leaveType" class="form-label small fw-semibold">Leave type</label>
 			<select id="leaveType" class="form-select" bind:value={form.leaveTypeId} required>

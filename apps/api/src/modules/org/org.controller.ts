@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { sendCreated, sendPaginated, sendSuccess } from '../../lib/response.js';
 import * as orgService from './org.service.js';
 import type {
+  AuditLogQuery,
   BranchCreateInput,
   BranchQuery,
   BranchUpdateInput,
@@ -247,4 +248,10 @@ export async function upsertCompanySettingHandler(req: Request, res: Response) {
   const body = req.body as CompanySettingUpsertInput;
   const setting = await orgService.upsertCompanySetting((req.params.key as string), body);
   return sendSuccess(res, setting, 'Company setting saved successfully');
+}
+
+export async function listAuditLogsHandler(req: Request, res: Response) {
+  const query = req.query as unknown as AuditLogQuery;
+  const result = await orgService.listAuditLogs(query);
+  return sendPaginated(res, result);
 }

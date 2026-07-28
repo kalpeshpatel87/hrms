@@ -30,3 +30,40 @@ export interface Role {
 	isSystem: boolean;
 	rolePermissions?: { permission: Permission }[];
 }
+
+export interface Company {
+	id: string;
+	name: string;
+	legalName: string | null;
+	cin: string | null;
+	gstin: string | null;
+	logoUrl: string | null;
+	addressLine1: string | null;
+	addressLine2: string | null;
+	city: string | null;
+	state: string | null;
+	country: string | null;
+	postalCode: string | null;
+	timezone: string;
+	defaultCurrency: string;
+}
+
+export type CompanyUpdateInput = Partial<
+	Omit<Company, 'id' | 'timezone' | 'defaultCurrency'> & {
+		timezone: string;
+		defaultCurrency: string;
+	}
+>;
+
+export interface AuditLogRow {
+	id: string;
+	actor: { id: string; email: string } | null;
+	action: string;
+	entityType: string;
+	entityId: string;
+	before: unknown;
+	after: unknown;
+	ipAddress: string | null;
+	userAgent: string | null;
+	createdAt: string;
+}

@@ -1,6 +1,14 @@
 import type { PaginatedResult } from '@atyantik/shared-types';
 import { apiClient } from '../../services/api-client.js';
-import type { CreateDepartmentInput, DepartmentRow, Permission, Role } from './types.js';
+import type {
+	AuditLogRow,
+	Company,
+	CompanyUpdateInput,
+	CreateDepartmentInput,
+	DepartmentRow,
+	Permission,
+	Role
+} from './types.js';
 
 interface ApiEnvelope<T> {
 	success: boolean;
@@ -57,6 +65,27 @@ export async function listPermissions(): Promise<Permission[]> {
 export async function setRolePermissions(roleId: string, permissionIds: string[]): Promise<Role> {
 	const res = await apiClient.put<ApiEnvelope<Role>>(`/org/roles/${roleId}/permissions`, {
 		permissionIds
+	});
+	return res.data.data;
+}
+
+export async function getCompany(): Promise<Company> {
+	const res = await apiClient.get<ApiEnvelope<Company>>('/org/company');
+	return res.data.data;
+}
+
+export async function updateCompany(input: CompanyUpdateInput): Promise<Company> {
+	const res = await apiClient.put<ApiEnvelope<Company>>('/org/company', input);
+	return res.data.data;
+}
+
+export async function listAuditLogs(params: {
+	page?: number;
+	pageSize?: number;
+	entityType?: string;
+}): Promise<PaginatedResult<AuditLogRow>> {
+	const res = await apiClient.get<ApiEnvelope<PaginatedResult<AuditLogRow>>>('/org/audit-logs', {
+		params
 	});
 	return res.data.data;
 }

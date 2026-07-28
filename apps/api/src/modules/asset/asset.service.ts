@@ -67,7 +67,17 @@ export async function deleteVendor(id: string) {
 // Asset
 // ---------------------------------------------------------------------------
 
-const assetInclude = { vendor: true } satisfies Prisma.AssetInclude;
+const assetInclude = {
+  vendor: true,
+  // Only the current (unreturned) assignment, if any — lets the admin UI show
+  // who an asset is with and whether to offer "Assign" vs "Return".
+  assignments: {
+    where: { returnedAt: null },
+    take: 1,
+    orderBy: { assignedAt: 'desc' },
+    include: { employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } } },
+  },
+} satisfies Prisma.AssetInclude;
 
 export async function listAssets(query: AssetQuery) {
   const where: Prisma.AssetWhereInput = {};

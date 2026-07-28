@@ -4,9 +4,11 @@ import { requireAuth } from '../../middlewares/requireAuth.js';
 import { validate } from '../../middlewares/validate.js';
 import * as controller from './leave.controller.js';
 import {
+  accrueLeaveBalancesSchema,
   approvalActionSchema,
   cancelLeaveRequestSchema,
   createLeavePolicySchema,
+  createLeaveRequestAdminSchema,
   createLeaveRequestSchema,
   createLeaveTypeSchema,
   idParamSchema,
@@ -85,6 +87,14 @@ leaveRoutes.get(
   asyncHandler(controller.getMyLeaveBalancesHandler),
 );
 
+// Admin-only: backfill missing LeaveBalance rows for a year (new hires, newly added policies).
+leaveRoutes.post(
+  '/balances/accrue',
+  ...requireAuth('leave:update'),
+  validate(accrueLeaveBalancesSchema),
+  asyncHandler(controller.accrueLeaveBalancesHandler),
+);
+
 // ---------------------------------------------------------------------------
 // LeaveRequest
 // ---------------------------------------------------------------------------
@@ -116,6 +126,14 @@ leaveRoutes.get(
   ...requireAuth('leave:read'),
   validate(leaveRequestAdminQuerySchema, 'query'),
   asyncHandler(controller.listAllLeaveRequestsHandler),
+);
+
+// Admin-only: apply leave on behalf of a specific employee (e.g. a phoned-in request).
+leaveRoutes.post(
+  '/requests/admin',
+  ...requireAuth('leave:create'),
+  validate(createLeaveRequestAdminSchema),
+  asyncHandler(controller.createLeaveRequestAdminHandler),
 );
 
 // ---------------------------------------------------------------------------

@@ -158,4 +158,18 @@ export const companySettingUpsertSchema = z.object({
 export const companySettingQuerySchema = paginationQuerySchema;
 
 export type CompanySettingUpsertInput = z.infer<typeof companySettingUpsertSchema>;
+
+// ---------------------------------------------------------------------------
+// AuditLog (read-only)
+// ---------------------------------------------------------------------------
+
+export const auditLogQuerySchema = paginationQuerySchema.merge(
+  z.object({
+    entityType: z.string().min(1).optional(),
+    actorId: z.string().min(1).optional(),
+    dateFrom: z.coerce.date().optional(),
+    dateTo: z.coerce.date().optional(),
+  }),
+);
+export type AuditLogQuery = z.infer<typeof auditLogQuerySchema>;
 export type CompanySettingQuery = z.infer<typeof companySettingQuerySchema>;
