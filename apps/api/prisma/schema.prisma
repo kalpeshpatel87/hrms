@@ -231,13 +231,6 @@ enum ResignationStatus {
   RELIEVED
 }
 
-enum OnboardingTaskStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  SKIPPED
-}
-
 enum ExitTaskStatus {
   PENDING
   IN_PROGRESS
@@ -410,7 +403,6 @@ model User {
   exitChecklistTasks     ExitChecklistTask[]
   exitInterviewsHeld     ExitInterview[]
   interviewPanelistOf    InterviewPanelist[]
-  onboardingTasks        OnboardingTask[]
   ticketsAssigned        Ticket[]
   ticketCommentsAuthored TicketComment[]
 
@@ -815,34 +807,33 @@ model Employee {
   bankIfsc          String?
   bankName          String?
 
-  documents           EmployeeDocument[]
-  emergencyContacts   EmergencyContact[]
-  educationRecords    EducationRecord[]
-  experienceRecords   ExperienceRecord[]
-  employeeSkills      EmployeeSkill[]
-  certifications      Certification[]
-  notes               EmployeeNote[]
-  attendanceRecords   AttendanceRecord[]
-  correctionRequests  AttendanceCorrectionRequest[]
-  leaveRequests       LeaveRequest[]
-  leaveBalances       LeaveBalance[]
-  salaryStructures    SalaryStructure[]
-  salaryRevisions     SalaryRevision[]
-  payslips            Payslip[]
-  reimbursements      Reimbursement[]
-  deductions          Deduction[]
-  goals               Goal[]
-  performanceReviews  PerformanceReview[]
-  projectAssignments  ProjectAssignment[]
-  timesheets          Timesheet[]
-  assetAssignments    AssetAssignment[]
-  resignations        Resignation[]
-  onboardingChecklist OnboardingChecklist?
-  ticketsRaised       Ticket[]
-  enrollments         Enrollment[]
-  expenseClaims       ExpenseClaim[]
-  travelRequests      TravelRequest[]
-  documentsOwned      Document[]
+  documents          EmployeeDocument[]
+  emergencyContacts  EmergencyContact[]
+  educationRecords   EducationRecord[]
+  experienceRecords  ExperienceRecord[]
+  employeeSkills     EmployeeSkill[]
+  certifications     Certification[]
+  notes              EmployeeNote[]
+  attendanceRecords  AttendanceRecord[]
+  correctionRequests AttendanceCorrectionRequest[]
+  leaveRequests      LeaveRequest[]
+  leaveBalances      LeaveBalance[]
+  salaryStructures   SalaryStructure[]
+  salaryRevisions    SalaryRevision[]
+  payslips           Payslip[]
+  reimbursements     Reimbursement[]
+  deductions         Deduction[]
+  goals              Goal[]
+  performanceReviews PerformanceReview[]
+  projectAssignments ProjectAssignment[]
+  timesheets         Timesheet[]
+  assetAssignments   AssetAssignment[]
+  resignations       Resignation[]
+  ticketsRaised      Ticket[]
+  enrollments        Enrollment[]
+  expenseClaims      ExpenseClaim[]
+  travelRequests     TravelRequest[]
+  documentsOwned     Document[]
 
   headedDepartments Department[] @relation("DepartmentHead")
   ledTeams          Team[]       @relation("TeamLead")
@@ -1991,50 +1982,6 @@ model Offer {
   updatedBy String?
 
   @@map("offers")
-}
-
-// =========================================================================
-// ONBOARDING
-// =========================================================================
-
-model OnboardingChecklist {
-  id           String    @id @default(cuid())
-  employeeId   String    @unique
-  employee     Employee  @relation(fields: [employeeId], references: [id])
-  templateName String    @default("Default")
-  startedAt    DateTime  @default(now())
-  completedAt  DateTime?
-
-  tasks OnboardingTask[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  createdBy String?
-  updatedBy String?
-
-  @@map("onboarding_checklists")
-}
-
-model OnboardingTask {
-  id                    String               @id @default(cuid())
-  onboardingChecklistId String
-  onboardingChecklist   OnboardingChecklist  @relation(fields: [onboardingChecklistId], references: [id], onDelete: Cascade)
-  taskName              String
-  assignedToId          String?
-  assignedTo            User?                @relation(fields: [assignedToId], references: [id])
-  status                OnboardingTaskStatus @default(PENDING)
-  dueDate               DateTime?            @db.Date
-  completedAt           DateTime?
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  createdBy String?
-  updatedBy String?
-
-  @@index([onboardingChecklistId])
-  @@map("onboarding_tasks")
 }
 
 // =========================================================================

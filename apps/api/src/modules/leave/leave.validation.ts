@@ -50,9 +50,24 @@ export const leaveBalanceQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100).optional(),
 });
 
+/** Admin-only: view any employee's leave balances (self-service uses /balances/me instead). */
+export const adminLeaveBalanceQuerySchema = z.object({
+  employeeId: z.string().min(1),
+  year: z.coerce.number().int().min(2000).max(2100).optional(),
+});
+
 /** Admin-only: (re-)initialize leave balances for every employee/policy missing a row for the given year. */
 export const accrueLeaveBalancesSchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100),
+});
+
+/** Admin-only: add (positive amount) or remove (negative amount) days from an employee's leave balance. */
+export const adjustLeaveBalanceSchema = z.object({
+  employeeId: z.string().min(1),
+  leaveTypeId: z.string().min(1),
+  year: z.coerce.number().int().min(2000).max(2100),
+  amount: z.coerce.number().refine((n) => n !== 0, 'amount must be non-zero'),
+  reason: z.string().max(500).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -112,7 +127,9 @@ export type CreateLeavePolicyInput = z.infer<typeof createLeavePolicySchema>;
 export type UpdateLeavePolicyInput = z.infer<typeof updateLeavePolicySchema>;
 export type LeavePolicyQuery = z.infer<typeof leavePolicyQuerySchema>;
 export type LeaveBalanceQuery = z.infer<typeof leaveBalanceQuerySchema>;
+export type AdminLeaveBalanceQuery = z.infer<typeof adminLeaveBalanceQuerySchema>;
 export type AccrueLeaveBalancesInput = z.infer<typeof accrueLeaveBalancesSchema>;
+export type AdjustLeaveBalanceInput = z.infer<typeof adjustLeaveBalanceSchema>;
 export type CreateLeaveRequestInput = z.infer<typeof createLeaveRequestSchema>;
 export type CreateLeaveRequestAdminInput = z.infer<typeof createLeaveRequestAdminSchema>;
 export type LeaveRequestMeQuery = z.infer<typeof leaveRequestMeQuerySchema>;

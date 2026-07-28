@@ -5,9 +5,11 @@ import type {
 	Company,
 	CompanyUpdateInput,
 	CreateDepartmentInput,
+	CreateRoleInput,
 	DepartmentRow,
 	Permission,
-	Role
+	Role,
+	UpdateRoleInput
 } from './types.js';
 
 interface ApiEnvelope<T> {
@@ -67,6 +69,20 @@ export async function setRolePermissions(roleId: string, permissionIds: string[]
 		permissionIds
 	});
 	return res.data.data;
+}
+
+export async function createRole(input: CreateRoleInput): Promise<Role> {
+	const res = await apiClient.post<ApiEnvelope<Role>>('/org/roles', input);
+	return res.data.data;
+}
+
+export async function updateRole(id: string, input: UpdateRoleInput): Promise<Role> {
+	const res = await apiClient.put<ApiEnvelope<Role>>(`/org/roles/${id}`, input);
+	return res.data.data;
+}
+
+export async function deleteRole(id: string): Promise<void> {
+	await apiClient.delete(`/org/roles/${id}`);
 }
 
 export async function getCompany(): Promise<Company> {

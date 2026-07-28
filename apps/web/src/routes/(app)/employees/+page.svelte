@@ -2,15 +2,22 @@
 	import { onMount } from 'svelte';
 	import DataTable, { type Column } from '../../../lib/components/ui/DataTable.svelte';
 	import Modal from '../../../lib/components/ui/Modal.svelte';
-	import { createEmployee, listEmployees } from '../../../lib/features/employee/api.js';
+	import {
+		createEmployee,
+		deleteEmployee,
+		listEmployees,
+		reactivateEmployee
+	} from '../../../lib/features/employee/api.js';
 	import type {
 		CreateEmployeeInput,
 		EmployeeListItem
 	} from '../../../lib/features/employee/types.js';
+	import { listRoles } from '../../../lib/features/admin/api.js';
+	import type { Role } from '../../../lib/features/admin/types.js';
 	import { listAllDepartments } from '../../../lib/features/org/api.js';
 	import type { Department } from '../../../lib/features/org/types.js';
 	import { extractErrorMessage } from '../../../lib/services/api-client.js';
-	import { hasPermission } from '../../../lib/stores/auth.js';
+	import { hasPermission, isSuperAdmin } from '../../../lib/stores/auth.js';
 	import { toasts } from '../../../lib/stores/toast.js';
 
 	let loading = $state(true);
@@ -24,6 +31,8 @@
 
 	let departments = $state<Department[]>([]);
 	let departmentFilter = $state('');
+	let activeFilter = $state<'active' | 'inactive' | 'all'>('active');
+	let roles = $state<Role[]>([]);
 
 	let createModalOpen = $state(false);
 	let creating = $state(false);
@@ -35,6 +44,8 @@
 	});
 
 	const canCreate = hasPermission('employee:create');
+	const canOverrideStatus = isSuperAdmin();
+	const canDeactivate = hasPermission('employee:delete');
 
 	const columns: Column[] = [
 		{ key: 'employeeCode', label: 'Code', sortable: true, width: '110px' },
@@ -53,7 +64,8 @@
 				search: search || undefined,
 				sortBy,
 				sortDir,
-				departmentId: departmentFilter || undefined
+				departmentId: departmentFilter || undefined,
+				activeFilter
 			});
 			rows = result.items;
 			total = result.total;
@@ -68,6 +80,11 @@
 		listAllDepartments()
 			.then((d) => (departments = d))
 			.catch(() => undefined);
+		if (canOverrideStatus) {
+			listRoles()
+				.then((r) => (roles = r))
+				.catch(() => undefined);
+		}
 		await load();
 	});
 
@@ -91,6 +108,34 @@
 	function handleDepartmentFilterChange() {
 		page = 1;
 		void load();
+	}
+
+	function handleActiveFilterChange() {
+		page = 1;
+		void load();
+	}
+
+	async function handleDeactivate(row: EmployeeListItem) {
+		if (!confirm(`Deactivate ${row.firstName} ${row.lastName}? They will no longer be able to log in.`)) {
+			return;
+		}
+		try {
+			await deleteEmployee(row.id);
+			toasts.success('Employee deactivated');
+			await load();
+		} catch (err) {
+			toasts.error('Could not deactivate employee', extractErrorMessage(err));
+		}
+	}
+
+	async function handleReactivate(row: EmployeeListItem) {
+		try {
+			await reactivateEmployee(row.id);
+			toasts.success('Employee reactivated');
+			await load();
+		} catch (err) {
+			toasts.error('Could not reactivate employee', extractErrorMessage(err));
+		}
 	}
 
 	async function handleCreateSubmit(event: SubmitEvent) {
@@ -138,6 +183,17 @@
 				<option value={dept.id}>{dept.name}</option>
 			{/each}
 		</select>
+		{#if canDeactivate}
+			<select
+				class="form-select form-select-sm"
+				bind:value={activeFilter}
+				onchange={handleActiveFilterChange}
+			>
+				<option value="active">Active</option>
+				<option value="inactive">Deactivated</option>
+				<option value="all">All</option>
+			</select>
+		{/if}
 		{#if canCreate}
 			<button type="button" class="btn btn-primary btn-sm" onclick={() => (createModalOpen = true)}>
 				<i class="bi bi-plus-lg me-1"></i>New Employee
@@ -165,7 +221,24 @@
 			onSearchChange={handleSearchChange}
 		>
 			{#snippet rowActions(row)}
-				<a href="/employees/{row.id}" class="btn btn-sm btn-outline-secondary">View</a>
+				<div class="d-flex gap-1 justify-content-end">
+					<a href="/employees/{row.id}" class="btn btn-sm btn-outline-secondary">View</a>
+					{#if canDeactivate}
+						{#if row.user.isActive}
+							<button
+								type="button"
+								class="btn btn-sm btn-outline-danger"
+								onclick={() => handleDeactivate(row)}>Deactivate</button
+							>
+						{:else}
+							<button
+								type="button"
+								class="btn btn-sm btn-outline-success"
+								onclick={() => handleReactivate(row)}>Reactivate</button
+							>
+						{/if}
+					{/if}
+				</div>
 			{/snippet}
 		</DataTable>
 	</div>
@@ -220,6 +293,29 @@
 				/>
 			</div>
 		</div>
+		{#if canOverrideStatus}
+			<div class="mb-3">
+				<label for="status" class="form-label small fw-semibold">Employment status</label>
+				<select id="status" class="form-select" bind:value={createForm.status}>
+					<option value={undefined}>Auto (based on date of joining)</option>
+					<option value="PROBATION">Probation</option>
+					<option value="ACTIVE">Permanent</option>
+				</select>
+				<div class="form-text">
+					Left on Auto, employees joining within the last 6 months start on Probation; earlier
+					joining dates start as Permanent.
+				</div>
+			</div>
+			<div class="mb-3">
+				<label for="role" class="form-label small fw-semibold">Role</label>
+				<select id="role" class="form-select" bind:value={createForm.roleId}>
+					<option value={undefined}>Auto (Employee)</option>
+					{#each roles as role (role.id)}
+						<option value={role.id}>{role.name}</option>
+					{/each}
+				</select>
+			</div>
+		{/if}
 		<p class="text-muted-2 small mb-0">
 			A temporary password is generated automatically and shown after creation; the employee will be
 			required to change it on first login.

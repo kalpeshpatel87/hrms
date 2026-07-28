@@ -29,7 +29,6 @@ const PERMISSION_MATRIX: Record<string, string[]> = {
   announcement: ['create', 'read', 'update', 'delete'],
   exit: ['create', 'read', 'update', 'approve'],
   recruitment: ['create', 'read', 'update', 'delete'],
-  onboarding: ['create', 'read', 'update'],
   helpdesk: ['create', 'read', 'update', 'delete'],
   learning: ['create', 'read', 'update', 'delete'],
   expense: ['create', 'read', 'update', 'approve'],

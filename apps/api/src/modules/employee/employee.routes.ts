@@ -23,6 +23,8 @@ import {
   updateEmployeeSkillSchema,
   updateExperienceRecordSchema,
   updateSkillCatalogSchema,
+  updateMyProfileSchema,
+  setEmployeeRoleSchema,
 } from './employee.validation.js';
 
 export const employeeRoutes = Router();
@@ -67,6 +69,12 @@ employeeRoutes.get('/org-chart/tree', ...requireAuth('employee:read'), asyncHand
 // ---------------------------------------------------------------------------
 
 employeeRoutes.get('/me', ...requireAuth(), asyncHandler(controller.getMeHandler));
+employeeRoutes.patch(
+  '/me',
+  ...requireAuth(),
+  validate(updateMyProfileSchema),
+  asyncHandler(controller.updateMyProfileHandler),
+);
 
 // ---------------------------------------------------------------------------
 // Employee CRUD
@@ -92,6 +100,17 @@ employeeRoutes.patch(
   asyncHandler(controller.updateEmployeeHandler),
 );
 employeeRoutes.delete('/:id', ...requireAuth('employee:delete'), asyncHandler(controller.deleteEmployeeHandler));
+employeeRoutes.post(
+  '/:id/reactivate',
+  ...requireAuth('employee:delete'),
+  asyncHandler(controller.reactivateEmployeeHandler),
+);
+employeeRoutes.patch(
+  '/:id/role',
+  ...requireAuth('role:update'),
+  validate(setEmployeeRoleSchema),
+  asyncHandler(controller.setEmployeeRoleHandler),
+);
 employeeRoutes.get('/:id/org-chart', ...requireAuth('employee:read'), asyncHandler(controller.getEmployeeOrgChartHandler));
 
 // ---------------------------------------------------------------------------

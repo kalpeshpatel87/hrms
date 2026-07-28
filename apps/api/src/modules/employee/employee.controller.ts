@@ -20,6 +20,8 @@ import type {
   UpdateEmployeeSkillInput,
   UpdateExperienceRecordInput,
   UpdateSkillCatalogInput,
+  UpdateMyProfileInput,
+  SetEmployeeRoleInput,
   ExperienceRecordInput,
 } from './employee.validation.js';
 
@@ -44,6 +46,12 @@ export async function getMeHandler(req: Request, res: Response) {
   return sendSuccess(res, employee);
 }
 
+export async function updateMyProfileHandler(req: Request, res: Response) {
+  const body = req.body as UpdateMyProfileInput;
+  const employee = await employeeService.updateMyProfile(req.user!.sub, body);
+  return sendSuccess(res, employee, 'Profile updated successfully');
+}
+
 export async function getEmployeeHandler(req: Request, res: Response) {
   const employee = await employeeService.getEmployeeById(req.params.id as string, req.user!);
   return sendSuccess(res, employee);
@@ -58,6 +66,17 @@ export async function updateEmployeeHandler(req: Request, res: Response) {
 export async function deleteEmployeeHandler(req: Request, res: Response) {
   await employeeService.deleteEmployee(req.params.id as string);
   return sendSuccess(res, null, 'Employee deleted successfully');
+}
+
+export async function reactivateEmployeeHandler(req: Request, res: Response) {
+  const employee = await employeeService.reactivateEmployee(req.params.id as string);
+  return sendSuccess(res, employee, 'Employee reactivated successfully');
+}
+
+export async function setEmployeeRoleHandler(req: Request, res: Response) {
+  const body = req.body as SetEmployeeRoleInput;
+  const result = await employeeService.setEmployeeRole(req.params.id as string, body.roleId);
+  return sendSuccess(res, result, 'Role updated successfully');
 }
 
 // ---------------------------------------------------------------------------

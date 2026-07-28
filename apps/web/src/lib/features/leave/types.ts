@@ -56,3 +56,11 @@ export interface CreateLeaveRequestInput {
 export interface CreateLeaveRequestAdminInput extends CreateLeaveRequestInput {
 	employeeId: string;
 }
+
+export interface AdjustLeaveBalanceInput {
+	employeeId: string;
+	leaveTypeId: string;
+	year: number;
+	amount: number;
+	reason?: string;
+}

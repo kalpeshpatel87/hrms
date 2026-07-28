@@ -42,15 +42,17 @@ timesheetRoutes.get(
   validate(projectQuerySchema, 'query'),
   asyncHandler(controller.listProjectsHandler),
 );
+// Project management is restricted to timesheet:approve (Super Admin only today) — unlike
+// timesheet:create, which the seeded Employee role also holds for logging their own time.
 timesheetRoutes.post(
   '/projects',
-  ...requireAuth('timesheet:create'),
+  ...requireAuth('timesheet:approve'),
   validate(projectSchema),
   asyncHandler(controller.createProjectHandler),
 );
 timesheetRoutes.patch(
   '/projects/:id',
-  ...requireAuth('timesheet:create'),
+  ...requireAuth('timesheet:approve'),
   validate(updateProjectSchema),
   asyncHandler(controller.updateProjectHandler),
 );

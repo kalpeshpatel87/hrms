@@ -51,3 +51,15 @@ export async function updateEmployee(id: string, input: UpdateEmployeeInput) {
 export async function deleteEmployee(id: string): Promise<void> {
 	await apiClient.delete(`/employees/${id}`);
 }
+
+export async function reactivateEmployee(id: string) {
+	const res = await apiClient.post<ApiEnvelope<EmployeeListItem>>(`/employees/${id}/reactivate`);
+	return res.data.data;
+}
+
+export async function setEmployeeRole(id: string, roleId: string) {
+	const res = await apiClient.patch<ApiEnvelope<{ employeeId: string }>>(`/employees/${id}/role`, {
+		roleId
+	});
+	return res.data.data;
+}

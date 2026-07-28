@@ -31,6 +31,14 @@ export interface Role {
 	rolePermissions?: { permission: Permission }[];
 }
 
+export interface CreateRoleInput {
+	name: string;
+	slug: string;
+	description?: string | null;
+}
+
+export type UpdateRoleInput = Partial<Pick<CreateRoleInput, 'name' | 'description'>>;
+
 export interface Company {
 	id: string;
 	name: string;

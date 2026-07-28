@@ -4,6 +4,8 @@ import { prisma } from '../../db/prisma.js';
 import { ApiError } from '../../lib/ApiError.js';
 import { recordAuditLog } from '../../lib/auditLog.js';
 import type {
+  AdjustLeaveBalanceInput,
+  AdminLeaveBalanceQuery,
   ApprovalActionInput,
   CancelLeaveRequestInput,
   CreateLeavePolicyInput,
@@ -273,6 +275,64 @@ export async function accrueLeaveBalances(userId: string, year: number) {
 
   await recordAuditLog({ action: 'CREATE', entityType: 'LeaveBalance', entityId: `accrual-${year}`, after: { year, created } });
   return { year, created };
+}
+
+/** Admin-only: view a specific employee's leave balances for a given (or current) year. */
+export async function listEmployeeLeaveBalances(query: AdminLeaveBalanceQuery) {
+  const targetYear = query.year ?? new Date().getFullYear();
+
+  return prisma.leaveBalance.findMany({
+    where: { employeeId: query.employeeId, year: targetYear },
+    include: { leaveType: true },
+    orderBy: { leaveType: { name: 'asc' } },
+  });
+}
+
+/**
+ * Admin-only: add (positive amount) or remove (negative amount) days from an
+ * employee's leave balance. Creates the LeaveBalance row on the fly (with a
+ * zero base allocation) if one doesn't exist yet for the given year.
+ */
+export async function adjustLeaveBalance(input: AdjustLeaveBalanceInput) {
+  const leaveType = await prisma.leaveType.findUnique({ where: { id: input.leaveTypeId } });
+  if (!leaveType) throw ApiError.badRequest('Leave type not found');
+
+  const before = await prisma.leaveBalance.findUnique({
+    where: { employeeId_leaveTypeId_year: { employeeId: input.employeeId, leaveTypeId: input.leaveTypeId, year: input.year } },
+  });
+
+  const nextAvailable = (before?.available.toNumber() ?? 0) + input.amount;
+  if (!leaveType.allowNegativeBalance && nextAvailable < 0) {
+    throw ApiError.badRequest(`This adjustment would make the ${leaveType.name} balance negative`);
+  }
+
+  const updated = before
+    ? await prisma.leaveBalance.update({
+        where: { id: before.id },
+        data: { adjusted: { increment: input.amount }, available: { increment: input.amount } },
+        include: { leaveType: true },
+      })
+    : await prisma.leaveBalance.create({
+        data: {
+          employeeId: input.employeeId,
+          leaveTypeId: input.leaveTypeId,
+          year: input.year,
+          allocated: 0,
+          adjusted: input.amount,
+          available: input.amount,
+        },
+        include: { leaveType: true },
+      });
+
+  await recordAuditLog({
+    action: 'UPDATE',
+    entityType: 'LeaveBalance',
+    entityId: updated.id,
+    before,
+    after: updated,
+  });
+
+  return updated;
 }
 
 // ---------------------------------------------------------------------------

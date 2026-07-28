@@ -8,6 +8,17 @@ export type EmployeeStatus =
 	| 'RESIGNED'
 	| 'TERMINATED'
 	| 'ABSCONDED';
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
+export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
+export type BloodGroup =
+	| 'A_POSITIVE'
+	| 'A_NEGATIVE'
+	| 'B_POSITIVE'
+	| 'B_NEGATIVE'
+	| 'AB_POSITIVE'
+	| 'AB_NEGATIVE'
+	| 'O_POSITIVE'
+	| 'O_NEGATIVE';
 
 export interface EmployeeListItem {
 	id: string;
@@ -29,7 +40,13 @@ export interface EmployeeListItem {
 		lastName: string;
 		employeeCode: string;
 	} | null;
-	user: { id: string; email: string; isActive: boolean; mustChangePassword: boolean };
+	user: {
+		id: string;
+		email: string;
+		isActive: boolean;
+		mustChangePassword: boolean;
+		userRoles?: { role: { id: string; name: string; slug: string } }[];
+	};
 }
 
 export interface CreateEmployeeInput {
@@ -48,6 +65,19 @@ export interface CreateEmployeeInput {
 	teamId?: string;
 	shiftId?: string;
 	reportingManagerId?: string;
+	/** Defaults to the system "employee" role when omitted. Super Admin only. */
+	roleId?: string;
+	dateOfBirth?: string;
+	gender?: Gender;
+	maritalStatus?: MaritalStatus;
+	bloodGroup?: BloodGroup;
+	nationality?: string;
+	addressLine1?: string;
+	addressLine2?: string;
+	city?: string;
+	state?: string;
+	country?: string;
+	postalCode?: string;
 }
 
 export type UpdateEmployeeInput = Partial<CreateEmployeeInput>;
@@ -61,4 +91,5 @@ export interface EmployeeQueryParams {
 	departmentId?: string;
 	status?: EmployeeStatus;
 	employmentType?: EmploymentType;
+	activeFilter?: 'active' | 'inactive' | 'all';
 }

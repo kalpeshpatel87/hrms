@@ -90,7 +90,14 @@ export async function listDepartments(query: DepartmentQuery): Promise<Paginated
       where,
       orderBy: buildOrderBy(query, ['name', 'code', 'createdAt'], 'name'),
       ...pageSlice(query),
-      include: { parentDepartment: true, headEmployee: true, _count: { select: { subDepartments: true, employees: true } } },
+      include: {
+        parentDepartment: true,
+        headEmployee: true,
+        // Displayed as the department's "Employees" count — only count active, non-deactivated
+        // employees (this is a display count, unlike the delete-guard `_count.employees` checks
+        // elsewhere in this file, which intentionally count everyone still assigned).
+        _count: { select: { subDepartments: true, employees: { where: { deletedAt: null, user: { isActive: true } } } } },
+      },
     }),
     prisma.department.count({ where }),
   ]);

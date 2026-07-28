@@ -51,6 +51,8 @@ export const employeeQuerySchema = paginationQuerySchema.extend({
   branchId: z.string().min(1).optional(),
   status: z.enum(EMPLOYEE_STATUS_VALUES).optional(),
   employmentType: z.enum(EMPLOYMENT_TYPE_VALUES).optional(),
+  /** Account status — 'active' (default) excludes deactivated employees, matching the standard soft-delete scoping. */
+  activeFilter: z.enum(['active', 'inactive', 'all']).default('active'),
 });
 
 const employeeCoreFields = {
@@ -105,6 +107,8 @@ export const createEmployeeSchema = z.object({
   ...employeeCoreFields,
   email: z.string().email(),
   password: passwordSchema.optional(),
+  /** Defaults to the system "employee" role when omitted. */
+  roleId: z.string().min(1).optional(),
 });
 
 export const updateEmployeeSchema = z
@@ -114,9 +118,36 @@ export const updateEmployeeSchema = z
   })
   .partial();
 
+/** Self-service: only contact/personal fields, never job/employment/statutory fields. */
+export const updateMyProfileSchema = z
+  .object({
+    personalEmail: employeeCoreFields.personalEmail,
+    phone: employeeCoreFields.phone,
+    alternatePhone: employeeCoreFields.alternatePhone,
+    dateOfBirth: employeeCoreFields.dateOfBirth,
+    gender: employeeCoreFields.gender,
+    maritalStatus: employeeCoreFields.maritalStatus,
+    bloodGroup: employeeCoreFields.bloodGroup,
+    nationality: employeeCoreFields.nationality,
+    photoUrl: employeeCoreFields.photoUrl,
+    addressLine1: employeeCoreFields.addressLine1,
+    addressLine2: employeeCoreFields.addressLine2,
+    city: employeeCoreFields.city,
+    state: employeeCoreFields.state,
+    country: employeeCoreFields.country,
+    postalCode: employeeCoreFields.postalCode,
+  })
+  .partial();
+
+export const setEmployeeRoleSchema = z.object({
+  roleId: z.string().min(1),
+});
+
 export type EmployeeQuery = z.infer<typeof employeeQuerySchema>;
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
+export type UpdateMyProfileInput = z.infer<typeof updateMyProfileSchema>;
+export type SetEmployeeRoleInput = z.infer<typeof setEmployeeRoleSchema>;
 
 // ---------------------------------------------------------------------------
 // EmployeeDocument

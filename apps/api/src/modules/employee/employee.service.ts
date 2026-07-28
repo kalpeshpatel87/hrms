@@ -6,6 +6,7 @@ import { ApiError } from '../../lib/ApiError.js';
 import { recordAuditLog } from '../../lib/auditLog.js';
 import { buildPagination } from '../../lib/response.js';
 import type { AccessTokenPayload } from '../../lib/jwt.js';
+import { currentActorId } from '../../lib/requestContext.js';
 import type {
   CertificationInput,
   CreateEmployeeInput,
@@ -25,6 +26,7 @@ import type {
   UpdateEmployeeSkillInput,
   UpdateSkillCatalogInput,
   UpdateExperienceRecordInput,
+  UpdateMyProfileInput,
   ExperienceRecordInput,
 } from './employee.validation.js';
 
@@ -41,7 +43,15 @@ const employeeListInclude = {
   branch: { select: { id: true, name: true, code: true } },
   team: { select: { id: true, name: true } },
   reportingManager: { select: { id: true, firstName: true, lastName: true, employeeCode: true } },
-  user: { select: { id: true, email: true, isActive: true, mustChangePassword: true } },
+  user: {
+    select: {
+      id: true,
+      email: true,
+      isActive: true,
+      mustChangePassword: true,
+      userRoles: { include: { role: { select: { id: true, name: true, slug: true } } } },
+    },
+  },
 } satisfies Prisma.EmployeeInclude;
 
 const employeeFullInclude = {
@@ -130,13 +140,18 @@ async function assertEmployeeExists(employeeId: string) {
 // ---------------------------------------------------------------------------
 
 export async function listEmployees(query: EmployeeQuery) {
-  const { page, pageSize, sortBy, sortDir, search, departmentId, branchId, status, employmentType } = query;
+  const { page, pageSize, sortBy, sortDir, search, departmentId, branchId, status, employmentType, activeFilter } =
+    query;
 
   const where: Prisma.EmployeeWhereInput = {
     ...(departmentId && { departmentId }),
     ...(branchId && { branchId }),
     ...(status && { status }),
     ...(employmentType && { employmentType }),
+    // Explicitly setting `deletedAt` here (even to `undefined`) opts out of the Prisma client
+    // extension's default `deletedAt: null` auto-scoping — see withNotDeletedFilter in db/prisma.ts.
+    ...(activeFilter === 'inactive' && { deletedAt: { not: null } }),
+    ...(activeFilter === 'all' && { deletedAt: undefined }),
     ...(search && {
       OR: [
         { firstName: { contains: search, mode: 'insensitive' } },
@@ -170,8 +185,12 @@ export async function createEmployee(input: CreateEmployeeInput) {
   const existingUser = await prisma.user.findUnique({ where: { email: input.email } });
   if (existingUser) throw ApiError.conflict('A user with this email already exists');
 
-  const employeeRole = await prisma.role.findUnique({ where: { slug: EMPLOYEE_ROLE_SLUG } });
-  if (!employeeRole) throw ApiError.internal('Default "employee" role is not seeded');
+  const employeeRole = input.roleId
+    ? await prisma.role.findUnique({ where: { id: input.roleId } })
+    : await prisma.role.findUnique({ where: { slug: EMPLOYEE_ROLE_SLUG } });
+  if (!employeeRole) {
+    throw input.roleId ? ApiError.notFound('Role not found') : ApiError.internal('Default "employee" role is not seeded');
+  }
 
   const companyId = await resolveCompanyId(input.companyId);
   const employeeCode = input.employeeCode ?? (await generateEmployeeCode());
@@ -179,7 +198,22 @@ export async function createEmployee(input: CreateEmployeeInput) {
   const generatedPassword = input.password ? undefined : generateTempPassword();
   const passwordHash = await bcrypt.hash(input.password ?? generatedPassword!, BCRYPT_ROUNDS);
 
-  const { email, password: _password, employeeCode: _employeeCode, companyId: _companyId, ...employeeFields } = input;
+  const {
+    email,
+    password: _password,
+    employeeCode: _employeeCode,
+    companyId: _companyId,
+    roleId: _roleId,
+    ...employeeFields
+  } = input;
+
+  // Default status (unless the caller explicitly set one, e.g. a Super Admin override): an employee
+  // joining more than 6 months ago is treated as already confirmed/permanent rather than on probation.
+  if (!employeeFields.status) {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    employeeFields.status = employeeFields.dateOfJoining <= sixMonthsAgo ? 'ACTIVE' : 'PROBATION';
+  }
 
   const created = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -223,6 +257,19 @@ export async function resolveOwnEmployee(userId: string) {
   return employee;
 }
 
+export async function updateMyProfile(userId: string, input: UpdateMyProfileInput) {
+  const before = await resolveOwnEmployee(userId);
+
+  const updated = await prisma.employee.update({
+    where: { id: before.id },
+    data: input,
+    include: employeeListInclude,
+  });
+
+  await recordAuditLog({ action: 'UPDATE', entityType: 'Employee', entityId: before.id, before, after: updated });
+  return updated;
+}
+
 export async function updateEmployee(id: string, input: UpdateEmployeeInput) {
   const before = await assertEmployeeExists(id);
 
@@ -244,6 +291,56 @@ export async function deleteEmployee(id: string) {
   await prisma.refreshToken.updateMany({ where: { userId: employee.userId, revokedAt: null }, data: { revokedAt: new Date() } });
 
   await recordAuditLog({ action: 'DELETE', entityType: 'Employee', entityId: id, before: employee });
+}
+
+/** Reverses `deleteEmployee` — restores a deactivated Employee row and reactivates its linked User. */
+export async function reactivateEmployee(id: string) {
+  // findUnique always returns null for soft-deleted rows (see db/prisma.ts); findFirst with an
+  // explicit `deletedAt` filter is the only way to look up a deactivated row.
+  const employee = await prisma.employee.findFirst({ where: { id, deletedAt: { not: null } } });
+  if (!employee) throw ApiError.notFound('Deactivated employee not found');
+
+  await prisma.user.update({ where: { id: employee.userId }, data: { isActive: true } });
+  const updated = await prisma.employee.update({
+    where: { id },
+    data: { deletedAt: null },
+    include: employeeListInclude,
+  });
+
+  await recordAuditLog({ action: 'UPDATE', entityType: 'Employee', entityId: id, before: employee, after: updated });
+  return updated;
+}
+
+/**
+ * Replaces an employee's single assigned role (this app's model is one role per employee — see
+ * `createEmployee` above). Bumps `tokenVersion` and revokes refresh tokens so the new permission
+ * set takes effect on the employee's next request instead of silently applying to a stale token.
+ */
+export async function setEmployeeRole(employeeId: string, roleId: string) {
+  const employee = await assertEmployeeExists(employeeId);
+
+  const role = await prisma.role.findUnique({ where: { id: roleId } });
+  if (!role) throw ApiError.notFound('Role not found');
+
+  const before = await prisma.userRole.findMany({ where: { userId: employee.userId }, include: { role: true } });
+  const actorId = currentActorId();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.userRole.deleteMany({ where: { userId: employee.userId } });
+    await tx.userRole.create({ data: { userId: employee.userId, roleId, assignedBy: actorId } });
+    await tx.user.update({ where: { id: employee.userId }, data: { tokenVersion: { increment: 1 } } });
+  });
+  await prisma.refreshToken.updateMany({ where: { userId: employee.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+
+  await recordAuditLog({
+    action: 'UPDATE',
+    entityType: 'UserRole',
+    entityId: employee.userId,
+    before: before.map((ur) => ur.role.slug),
+    after: [role.slug],
+  });
+
+  return { employeeId, role };
 }
 
 // ---------------------------------------------------------------------------

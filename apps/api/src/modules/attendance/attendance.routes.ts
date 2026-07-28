@@ -141,12 +141,15 @@ attendanceRoutes.post(
  * @openapi
  * /attendance:
  *   get:
- *     summary: Admin/manager paginated attendance list, filterable by employee/department/status/date range
+ *     summary: Admin-only paginated attendance list for every employee, filterable by employee/department/status/date range
  *     tags: [Attendance]
  */
+// Gated on attendance:approve rather than attendance:read — the seeded Employee role holds
+// attendance:read too (for self-service), so gating "see everyone's attendance" on that would
+// leak every employee's records to any authenticated employee.
 attendanceRoutes.get(
   '/',
-  ...requireAuth('attendance:read'),
+  ...requireAuth('attendance:approve'),
   validate(attendanceQuerySchema, 'query'),
   asyncHandler(controller.listAttendanceHandler),
 );

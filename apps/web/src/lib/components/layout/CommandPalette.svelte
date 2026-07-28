@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { portal } from '../../actions/portal.js';
 	import { listEmployees } from '../../features/employee/api.js';
 	import { NAV_SECTIONS } from '../../navigation.js';
 	import { extractErrorMessage } from '../../services/api-client.js';
@@ -132,6 +133,7 @@
 {#if open}
 	<div
 		class="command-palette-backdrop"
+		use:portal
 		onclick={closePalette}
 		onkeydown={(e) => e.key === 'Escape' && closePalette()}
 		role="presentation"

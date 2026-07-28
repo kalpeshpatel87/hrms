@@ -3,6 +3,8 @@ import { sendCreated, sendPaginated, sendSuccess, buildPagination } from '../../
 import * as leaveService from './leave.service.js';
 import type {
   AccrueLeaveBalancesInput,
+  AdjustLeaveBalanceInput,
+  AdminLeaveBalanceQuery,
   ApprovalActionInput,
   CancelLeaveRequestInput,
   CreateLeavePolicyInput,
@@ -80,6 +82,18 @@ export async function accrueLeaveBalancesHandler(req: Request, res: Response) {
   const body = req.body as AccrueLeaveBalancesInput;
   const result = await leaveService.accrueLeaveBalances(req.user!.sub, body.year);
   return sendSuccess(res, result, `Created ${result.created} leave balance record(s) for ${result.year}`);
+}
+
+export async function listEmployeeLeaveBalancesHandler(req: Request, res: Response) {
+  const query = req.query as unknown as AdminLeaveBalanceQuery;
+  const balances = await leaveService.listEmployeeLeaveBalances(query);
+  return sendSuccess(res, balances);
+}
+
+export async function adjustLeaveBalanceHandler(req: Request, res: Response) {
+  const body = req.body as AdjustLeaveBalanceInput;
+  const balance = await leaveService.adjustLeaveBalance(body);
+  return sendSuccess(res, balance, 'Leave balance adjusted successfully');
 }
 
 // ---------------------------------------------------------------------------

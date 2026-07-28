@@ -5,6 +5,7 @@
 	import { listEmployees } from '../../../lib/features/employee/api.js';
 	import type { EmployeeListItem } from '../../../lib/features/employee/types.js';
 	import {
+		adjustLeaveBalance,
 		approveLeaveRequest,
 		cancelLeaveRequest,
 		createLeaveRequest,
@@ -16,6 +17,7 @@
 		rejectLeaveRequest
 	} from '../../../lib/features/leave/api.js';
 	import type {
+		AdjustLeaveBalanceInput,
 		CreateLeaveRequestInput,
 		LeaveApproval,
 		LeaveBalance,
@@ -23,12 +25,13 @@
 		LeaveType
 	} from '../../../lib/features/leave/types.js';
 	import { extractErrorMessage } from '../../../lib/services/api-client.js';
-	import { hasPermission } from '../../../lib/stores/auth.js';
+	import { hasPermission, isSuperAdmin } from '../../../lib/stores/auth.js';
 	import { toasts } from '../../../lib/stores/toast.js';
 
 	let activeTab = $state<'requests' | 'approvals'>('requests');
 	const canApprove = hasPermission('leave:approve');
-	const canApplyForOthers = hasPermission('leave:create');
+	const canApplyForOthers = hasPermission('leave:update');
+	const canAdjustBalance = isSuperAdmin();
 
 	let employees = $state<EmployeeListItem[]>([]);
 	let onBehalfOfEmployeeId = $state('');
@@ -52,6 +55,16 @@
 		leaveTypeId: '',
 		startDate: '',
 		endDate: '',
+		reason: ''
+	});
+
+	let adjustModalOpen = $state(false);
+	let adjusting = $state(false);
+	let adjustForm = $state<AdjustLeaveBalanceInput>({
+		employeeId: '',
+		leaveTypeId: '',
+		year: new Date().getFullYear(),
+		amount: 0,
 		reason: ''
 	});
 
@@ -108,9 +121,13 @@
 		const tasks = [loadBalancesAndTypes(), loadRequests(), loadApprovals()];
 		if (canApplyForOthers) {
 			tasks.push(
-				listEmployees({ page: 1, pageSize: 200 }).then((result) => {
-					employees = result.items;
-				})
+				listEmployees({ page: 1, pageSize: 100 })
+					.then((result) => {
+						employees = result.items;
+					})
+					.catch((err) => {
+						toasts.error('Could not load employee list', extractErrorMessage(err));
+					})
 			);
 		}
 		await Promise.all(tasks);
@@ -121,6 +138,32 @@
 		onBehalfOfEmployeeId = '';
 		form = { leaveTypeId: '', startDate: '', endDate: '', reason: '' };
 		applyModalOpen = true;
+	}
+
+	function openAdjustModal() {
+		adjustForm = {
+			employeeId: '',
+			leaveTypeId: '',
+			year: new Date().getFullYear(),
+			amount: 0,
+			reason: ''
+		};
+		adjustModalOpen = true;
+	}
+
+	async function handleAdjustSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		adjusting = true;
+		try {
+			await adjustLeaveBalance(adjustForm);
+			toasts.success('Leave balance adjusted');
+			adjustModalOpen = false;
+			await loadBalancesAndTypes();
+		} catch (err) {
+			toasts.error('Could not adjust leave balance', extractErrorMessage(err));
+		} finally {
+			adjusting = false;
+		}
 	}
 
 	async function handleApplySubmit(event: SubmitEvent) {
@@ -185,6 +228,11 @@
 		<p class="text-muted-2 mb-0">Apply for leave and track your balances.</p>
 	</div>
 	<div class="d-flex gap-2">
+		{#if canAdjustBalance}
+			<button type="button" class="btn btn-outline-secondary btn-sm" onclick={openAdjustModal}>
+				<i class="bi bi-sliders me-1"></i>Adjust Balance
+			</button>
+		{/if}
 		{#if canApplyForOthers}
 			<button
 				type="button"
@@ -367,6 +415,87 @@
 				<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
 			{/if}
 			Submit request
+		</button>
+	{/snippet}
+</Modal>
+
+<Modal open={adjustModalOpen} title="Adjust Leave Balance" onClose={() => (adjustModalOpen = false)}>
+	<form id="adjust-balance-form" onsubmit={handleAdjustSubmit}>
+		<div class="mb-3">
+			<label for="adjustEmployee" class="form-label small fw-semibold">Employee</label>
+			<select
+				id="adjustEmployee"
+				class="form-select"
+				bind:value={adjustForm.employeeId}
+				required
+			>
+				<option value="" disabled>Select an employee</option>
+				{#each employees as employee (employee.id)}
+					<option value={employee.id}
+						>{employee.firstName} {employee.lastName} ({employee.employeeCode})</option
+					>
+				{/each}
+			</select>
+		</div>
+		<div class="mb-3">
+			<label for="adjustLeaveType" class="form-label small fw-semibold">Leave type</label>
+			<select
+				id="adjustLeaveType"
+				class="form-select"
+				bind:value={adjustForm.leaveTypeId}
+				required
+			>
+				<option value="" disabled>Select a leave type</option>
+				{#each leaveTypes as type (type.id)}
+					<option value={type.id}>{type.name}</option>
+				{/each}
+			</select>
+		</div>
+		<div class="row g-3 mb-3">
+			<div class="col-6">
+				<label for="adjustYear" class="form-label small fw-semibold">Year</label>
+				<input
+					id="adjustYear"
+					type="number"
+					class="form-control"
+					bind:value={adjustForm.year}
+					required
+				/>
+			</div>
+			<div class="col-6">
+				<label for="adjustAmount" class="form-label small fw-semibold">Days (+ add / - remove)</label>
+				<input
+					id="adjustAmount"
+					type="number"
+					step="0.5"
+					class="form-control"
+					bind:value={adjustForm.amount}
+					required
+				/>
+			</div>
+		</div>
+		<div class="mb-0">
+			<label for="adjustReason" class="form-label small fw-semibold">Reason (optional)</label>
+			<textarea
+				id="adjustReason"
+				class="form-control"
+				rows="3"
+				bind:value={adjustForm.reason}
+			></textarea>
+		</div>
+	</form>
+
+	{#snippet footer()}
+		<button
+			type="button"
+			class="btn btn-outline-secondary"
+			onclick={() => (adjustModalOpen = false)}>Cancel</button
+		>
+		<button type="submit" form="adjust-balance-form" class="btn btn-primary" disabled={adjusting}>
+			{#if adjusting}
+				<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+			{/if}
+			Save adjustment
 		</button>
 	{/snippet}
 </Modal>

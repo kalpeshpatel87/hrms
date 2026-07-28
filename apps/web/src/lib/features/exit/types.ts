@@ -29,3 +29,7 @@ export interface CreateResignationInput {
 	lastWorkingDate: string;
 	reason?: string;
 }
+
+export interface CreateResignationAdminInput extends CreateResignationInput {
+	employeeId: string;
+}

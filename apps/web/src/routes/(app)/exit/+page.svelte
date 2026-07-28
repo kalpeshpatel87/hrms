@@ -3,14 +3,26 @@
 	import EmptyState from '../../../lib/components/ui/EmptyState.svelte';
 	import Modal from '../../../lib/components/ui/Modal.svelte';
 	import StatusBadge from '../../../lib/components/ui/StatusBadge.svelte';
-	import { createResignation, listMyResignations } from '../../../lib/features/exit/api.js';
+	import {
+		createResignation,
+		createResignationForAdmin,
+		listMyResignations
+	} from '../../../lib/features/exit/api.js';
 	import type { CreateResignationInput, Resignation } from '../../../lib/features/exit/types.js';
+	import { listEmployees } from '../../../lib/features/employee/api.js';
+	import type { EmployeeListItem } from '../../../lib/features/employee/types.js';
 	import { extractErrorMessage } from '../../../lib/services/api-client.js';
+	import { hasPermission } from '../../../lib/stores/auth.js';
 	import { toasts } from '../../../lib/stores/toast.js';
 
+	const canSubmitForOthers = hasPermission('exit:create');
+
 	let resignations = $state<Resignation[]>([]);
+	let employees = $state<EmployeeListItem[]>([]);
 	let loading = $state(true);
 	let modalOpen = $state(false);
+	let modalMode = $state<'self' | 'admin'>('self');
+	let onBehalfOfEmployeeId = $state('');
 	let submitting = $state(false);
 	let form = $state<CreateResignationInput>({
 		resignationDate: new Date().toISOString().slice(0, 10),
@@ -20,24 +32,54 @@
 
 	async function load() {
 		loading = true;
-		try {
-			const result = await listMyResignations({ page: 1, pageSize: 20 });
-			resignations = result.items;
-		} catch (err) {
-			toasts.error('Could not load resignation history', extractErrorMessage(err));
-		} finally {
-			loading = false;
+		const tasks: Promise<unknown>[] = [
+			listMyResignations({ page: 1, pageSize: 20 })
+				.then((result) => {
+					resignations = result.items;
+				})
+				.catch((err) => {
+					toasts.error('Could not load resignation history', extractErrorMessage(err));
+				})
+		];
+		if (canSubmitForOthers) {
+			tasks.push(
+				listEmployees({ page: 1, pageSize: 100 })
+					.then((result) => {
+						employees = result.items;
+					})
+					.catch((err) => {
+						toasts.error('Could not load employee list', extractErrorMessage(err));
+					})
+			);
 		}
+		await Promise.all(tasks);
+		loading = false;
 	}
 
 	onMount(load);
+
+	function openModal(mode: 'self' | 'admin') {
+		modalMode = mode;
+		onBehalfOfEmployeeId = '';
+		form = {
+			resignationDate: new Date().toISOString().slice(0, 10),
+			lastWorkingDate: new Date().toISOString().slice(0, 10),
+			reason: ''
+		};
+		modalOpen = true;
+	}
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 		submitting = true;
 		try {
-			await createResignation(form);
-			toasts.success('Resignation submitted');
+			if (modalMode === 'admin') {
+				await createResignationForAdmin({ ...form, employeeId: onBehalfOfEmployeeId });
+				toasts.success('Resignation submitted on behalf of the employee');
+			} else {
+				await createResignation(form);
+				toasts.success('Resignation submitted');
+			}
 			modalOpen = false;
 			await load();
 		} catch (err) {
@@ -61,11 +103,22 @@
 		<h1 class="h4 fw-bold mb-1">Exit Management</h1>
 		<p class="text-muted-2 mb-0">Submit and track your resignation.</p>
 	</div>
-	{#if !hasActiveResignation}
-		<button type="button" class="btn btn-primary btn-sm" onclick={() => (modalOpen = true)}>
-			<i class="bi bi-box-arrow-right me-1"></i>Submit Resignation
-		</button>
-	{/if}
+	<div class="d-flex gap-2">
+		{#if canSubmitForOthers}
+			<button
+				type="button"
+				class="btn btn-outline-primary btn-sm"
+				onclick={() => openModal('admin')}
+			>
+				<i class="bi bi-person-x me-1"></i>Submit Resignation on Behalf of Employee
+			</button>
+		{/if}
+		{#if !hasActiveResignation}
+			<button type="button" class="btn btn-primary btn-sm" onclick={() => openModal('self')}>
+				<i class="bi bi-box-arrow-right me-1"></i>Submit Resignation
+			</button>
+		{/if}
+	</div>
 </div>
 
 {#if loading}
@@ -114,8 +167,25 @@
 	</div>
 {/if}
 
-<Modal open={modalOpen} title="Submit Resignation" onClose={() => (modalOpen = false)}>
+<Modal
+	open={modalOpen}
+	title={modalMode === 'admin' ? 'Submit Resignation on Behalf of Employee' : 'Submit Resignation'}
+	onClose={() => (modalOpen = false)}
+>
 	<form id="resignation-form" onsubmit={handleSubmit}>
+		{#if modalMode === 'admin'}
+			<div class="mb-3">
+				<label for="onBehalfOf" class="form-label small fw-semibold">Employee</label>
+				<select id="onBehalfOf" class="form-select" bind:value={onBehalfOfEmployeeId} required>
+					<option value="" disabled>Select an employee</option>
+					{#each employees as employee (employee.id)}
+						<option value={employee.id}
+							>{employee.firstName} {employee.lastName} ({employee.employeeCode})</option
+						>
+					{/each}
+				</select>
+			</div>
+		{/if}
 		<div class="row g-3 mb-3">
 			<div class="col-6">
 				<label for="resignationDate" class="form-label small fw-semibold">Resignation date</label>

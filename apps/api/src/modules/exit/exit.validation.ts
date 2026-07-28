@@ -9,6 +9,12 @@ export const createResignationSchema = z.object({
 });
 export type CreateResignationInput = z.infer<typeof createResignationSchema>;
 
+/** Admin-only: file a resignation on behalf of a specific employee. */
+export const createResignationAdminSchema = createResignationSchema.and(
+  z.object({ employeeId: z.string().min(1) }),
+);
+export type CreateResignationAdminInput = z.infer<typeof createResignationAdminSchema>;
+
 export const resignationQuerySchema = paginationQuerySchema;
 export type ResignationQuery = z.infer<typeof resignationQuerySchema>;
 

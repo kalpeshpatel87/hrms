@@ -1,6 +1,12 @@
 import type { PaginatedResult } from '@atyantik/shared-types';
 import { apiClient } from '../../services/api-client.js';
-import type { CreateTimesheetInput, Project, Timesheet } from './types.js';
+import type {
+	CreateProjectInput,
+	CreateTimesheetInput,
+	Project,
+	Timesheet,
+	UpdateProjectInput
+} from './types.js';
 
 interface ApiEnvelope<T> {
 	success: boolean;
@@ -12,6 +18,18 @@ export async function listProjects(): Promise<Project[]> {
 		params: { pageSize: 100 }
 	});
 	return res.data.data.items;
+}
+
+/** Admin-only (requires timesheet:approve). */
+export async function createProject(input: CreateProjectInput): Promise<Project> {
+	const res = await apiClient.post<ApiEnvelope<Project>>('/timesheets/projects', input);
+	return res.data.data;
+}
+
+/** Admin-only (requires timesheet:approve). */
+export async function updateProject(id: string, input: UpdateProjectInput): Promise<Project> {
+	const res = await apiClient.patch<ApiEnvelope<Project>>(`/timesheets/projects/${id}`, input);
+	return res.data.data;
 }
 
 export async function saveTimesheet(input: CreateTimesheetInput): Promise<Timesheet> {

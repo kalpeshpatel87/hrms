@@ -48,11 +48,9 @@ export const NAV_SECTIONS: NavSection[] = [
 				icon: 'bi-person-badge',
 				permission: 'recruitment:read'
 			},
-			// Onboarding and Exit Management are self-service pages (view your own
-			// checklist / submit your own resignation — see requireAuth() with no
-			// permission arg on their routes) — NOT gated behind the admin-only
-			// onboarding:read/exit:read permissions, unlike Recruitment above.
-			{ label: 'Onboarding', href: '/onboarding', icon: 'bi-door-open' },
+			// Exit Management is a self-service page (submit your own resignation —
+			// see requireAuth() with no permission arg on its base route) — NOT
+			// gated behind the admin-only exit:read permission, unlike Recruitment above.
 			{ label: 'Exit Management', href: '/exit', icon: 'bi-box-arrow-right' }
 		]
 	},
@@ -86,6 +84,12 @@ export const NAV_SECTIONS: NavSection[] = [
 				href: '/admin/audit-logs',
 				icon: 'bi-journal-text',
 				permission: 'audit_log:read'
+			},
+			{
+				label: 'Projects',
+				href: '/admin/projects',
+				icon: 'bi-kanban',
+				permission: 'timesheet:approve'
 			}
 		]
 	}

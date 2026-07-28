@@ -1,10 +1,26 @@
 export type TimesheetStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+export type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
 
 export interface Project {
 	id: string;
 	name: string;
 	code: string;
+	status: ProjectStatus;
+	clientId: string | null;
+	startDate: string | null;
+	endDate: string | null;
 }
+
+export interface CreateProjectInput {
+	name: string;
+	code: string;
+	clientId?: string;
+	status?: ProjectStatus;
+	startDate?: string;
+	endDate?: string;
+}
+
+export type UpdateProjectInput = Partial<CreateProjectInput>;
 
 export interface TimesheetEntry {
 	id?: string;

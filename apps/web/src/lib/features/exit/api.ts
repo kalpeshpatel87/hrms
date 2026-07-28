@@ -1,6 +1,6 @@
 import type { PaginatedResult } from '@atyantik/shared-types';
 import { apiClient } from '../../services/api-client.js';
-import type { CreateResignationInput, Resignation } from './types.js';
+import type { CreateResignationAdminInput, CreateResignationInput, Resignation } from './types.js';
 
 interface ApiEnvelope<T> {
 	success: boolean;
@@ -9,6 +9,14 @@ interface ApiEnvelope<T> {
 
 export async function createResignation(input: CreateResignationInput): Promise<Resignation> {
 	const res = await apiClient.post<ApiEnvelope<Resignation>>('/exit/resignations', input);
+	return res.data.data;
+}
+
+/** Admin-only (requires exit:create). */
+export async function createResignationForAdmin(
+	input: CreateResignationAdminInput
+): Promise<Resignation> {
+	const res = await apiClient.post<ApiEnvelope<Resignation>>('/exit/resignations/admin', input);
 	return res.data.data;
 }
 

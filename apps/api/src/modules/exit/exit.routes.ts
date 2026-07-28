@@ -5,6 +5,7 @@ import { validate } from '../../middlewares/validate.js';
 import * as controller from './exit.controller.js';
 import {
   createExitInterviewSchema,
+  createResignationAdminSchema,
   createResignationSchema,
   resignationQuerySchema,
   updateExitTaskSchema,
@@ -17,6 +18,14 @@ exitRoutes.post(
   ...requireAuth(),
   validate(createResignationSchema),
   asyncHandler(controller.createResignationHandler),
+);
+
+// Admin-only: file a resignation on behalf of a specific employee.
+exitRoutes.post(
+  '/resignations/admin',
+  ...requireAuth('exit:create'),
+  validate(createResignationAdminSchema),
+  asyncHandler(controller.createResignationAdminHandler),
 );
 exitRoutes.get(
   '/resignations/me',

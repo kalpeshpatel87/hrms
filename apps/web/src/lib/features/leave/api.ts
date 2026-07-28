@@ -1,6 +1,7 @@
 import type { PaginatedResult } from '@atyantik/shared-types';
 import { apiClient } from '../../services/api-client.js';
 import type {
+	AdjustLeaveBalanceInput,
 	CreateLeaveRequestAdminInput,
 	CreateLeaveRequestInput,
 	LeaveApproval,
@@ -18,6 +19,23 @@ export async function getMyLeaveBalances(year?: number): Promise<LeaveBalance[]>
 	const res = await apiClient.get<ApiEnvelope<LeaveBalance[]>>('/leave/balances/me', {
 		params: { year }
 	});
+	return res.data.data;
+}
+
+/** Admin-only (requires leave:update): view any employee's leave balances. */
+export async function listEmployeeLeaveBalances(
+	employeeId: string,
+	year?: number
+): Promise<LeaveBalance[]> {
+	const res = await apiClient.get<ApiEnvelope<LeaveBalance[]>>('/leave/balances', {
+		params: { employeeId, year }
+	});
+	return res.data.data;
+}
+
+/** Admin-only (requires leave:update): add (positive) or remove (negative) days from a balance. */
+export async function adjustLeaveBalance(input: AdjustLeaveBalanceInput): Promise<LeaveBalance> {
+	const res = await apiClient.post<ApiEnvelope<LeaveBalance>>('/leave/balances/adjust', input);
 	return res.data.data;
 }
 

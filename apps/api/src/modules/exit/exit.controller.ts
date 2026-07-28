@@ -3,6 +3,7 @@ import { sendCreated, sendPaginated, sendSuccess } from '../../lib/response.js';
 import * as exitService from './exit.service.js';
 import type {
   CreateExitInterviewInput,
+  CreateResignationAdminInput,
   CreateResignationInput,
   ResignationQuery,
   UpdateExitTaskInput,
@@ -12,6 +13,12 @@ export async function createResignationHandler(req: Request, res: Response) {
   const body = req.body as CreateResignationInput;
   const resignation = await exitService.createResignation(req.user!.sub, body);
   return sendCreated(res, resignation);
+}
+
+export async function createResignationAdminHandler(req: Request, res: Response) {
+  const body = req.body as CreateResignationAdminInput;
+  const resignation = await exitService.createResignationForAdmin(body);
+  return sendCreated(res, resignation, 'Resignation submitted on behalf of the employee');
 }
 
 export async function listMyResignationsHandler(req: Request, res: Response) {

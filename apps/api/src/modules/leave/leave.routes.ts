@@ -5,6 +5,8 @@ import { validate } from '../../middlewares/validate.js';
 import * as controller from './leave.controller.js';
 import {
   accrueLeaveBalancesSchema,
+  adjustLeaveBalanceSchema,
+  adminLeaveBalanceQuerySchema,
   approvalActionSchema,
   cancelLeaveRequestSchema,
   createLeavePolicySchema,
@@ -95,6 +97,22 @@ leaveRoutes.post(
   asyncHandler(controller.accrueLeaveBalancesHandler),
 );
 
+// Admin-only: view a specific employee's leave balances.
+leaveRoutes.get(
+  '/balances',
+  ...requireAuth('leave:update'),
+  validate(adminLeaveBalanceQuerySchema, 'query'),
+  asyncHandler(controller.listEmployeeLeaveBalancesHandler),
+);
+
+// Admin-only: add or remove days from an employee's leave balance.
+leaveRoutes.post(
+  '/balances/adjust',
+  ...requireAuth('leave:update'),
+  validate(adjustLeaveBalanceSchema),
+  asyncHandler(controller.adjustLeaveBalanceHandler),
+);
+
 // ---------------------------------------------------------------------------
 // LeaveRequest
 // ---------------------------------------------------------------------------
@@ -131,7 +149,7 @@ leaveRoutes.get(
 // Admin-only: apply leave on behalf of a specific employee (e.g. a phoned-in request).
 leaveRoutes.post(
   '/requests/admin',
-  ...requireAuth('leave:create'),
+  ...requireAuth('leave:update'),
   validate(createLeaveRequestAdminSchema),
   asyncHandler(controller.createLeaveRequestAdminHandler),
 );

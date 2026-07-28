@@ -5,6 +5,7 @@ import { recordAuditLog } from '../../lib/auditLog.js';
 import { buildPagination } from '../../lib/response.js';
 import type {
   CreateExitInterviewInput,
+  CreateResignationAdminInput,
   CreateResignationInput,
   ResignationQuery,
   UpdateExitTaskInput,
@@ -34,6 +35,20 @@ export async function createResignation(userId: string, input: CreateResignation
   const employee = await resolveEmployeeForUser(userId);
   const resignation = await prisma.resignation.create({
     data: { ...input, employeeId: employee.id },
+    include: resignationInclude,
+  });
+  await recordAuditLog({ action: 'CREATE', entityType: 'Resignation', entityId: resignation.id, after: resignation });
+  return resignation;
+}
+
+/** Admin-only: file a resignation on behalf of a specific employee (e.g. a verbal/phoned-in notice). */
+export async function createResignationForAdmin(input: CreateResignationAdminInput) {
+  const { employeeId, ...rest } = input;
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+  if (!employee) throw ApiError.notFound('Employee not found');
+
+  const resignation = await prisma.resignation.create({
+    data: { ...rest, employeeId: employee.id },
     include: resignationInclude,
   });
   await recordAuditLog({ action: 'CREATE', entityType: 'Resignation', entityId: resignation.id, after: resignation });
